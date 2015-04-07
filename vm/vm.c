@@ -56,10 +56,21 @@ int main(int argc, char *argv[])
     strcat(dest_filename, ".asm");
     FILE *dest = fopen(dest_filename, "wb");
     char code_line[MAXLINE];
+    
+    // Get filename for unique labels
+    char enc_fn[MAXLINE];  
+    strcpy(enc_fn, filename);
+    int i = 0;
+    while (enc_fn[i] != 0 && i < MAXLINE - 1)
+    {
+        if (enc_fn[i] == '.' || enc_fn[i] == '/')
+            enc_fn[i] = '$';
+        i++;
+    }
 
     for (int i = 0; i < commands.len; i++)
     {
-        encode(code_line, &commands.entries[i], i, filename);
+        encode(code_line, &commands.entries[i], i, enc_fn);
         fputs(code_line, dest);
     }
 
@@ -250,6 +261,52 @@ void encode(char *line,  Command *command, int line_num, char *filename)
             sprintf(line, "// %s\n@%s\nD=A\n@SP\nM=M+1\nA=M-1\nM=D\n\n", 
                     command->cln, command->arg2);
         }
+        else if (strcmp(command->arg1, "argument"))
+        {
+            sprintf(line, "// %s\n@%s\nD=A\n@ARG\nA=M+D\nD=M\n"
+                          "@SP\nM=M+1\nA=M-1\nM=D\n\n",
+                    command->cln, command->arg2);
+        }
+        else if (strcmp(command->arg1, "local"))
+        {
+            sprintf(line, "// %s\n@%s\nD=A\n@LCL\nA=M+D\nD=M\n"
+                          "@SP\nM=M+1\nA=M-1\nM=D\n\n",
+                    command->cln, command->arg2);
+        }
+        else if (strcmp(command->arg1, "this"))
+        {
+            sprintf(line, "// %s\n@%s\nD=A\n@THIS\nA=M+D\nD=M\n"
+                          "@SP\nM=M+1\nA=M-1\nM=D\n\n",
+                    command->cln, command->arg2);
+        }
+        else if (strcmp(command->arg1, "that"))
+        {
+            sprintf(line, "// %s\n@%s\nD=A\n@THAT\nA=M+D\nD=M\n"
+                          "@SP\nM=M+1\nA=M-1\nM=D\n\n",
+                    command->cln, command->arg2);
+        }
+        
+        // TODO: add pointer and temp
+
+    }
+    else if (command->type == C_POP)
+    {
+        // TODO: use a temp variable to pop
+
+        // @<index>
+        // D=A
+        // @LCL
+        // A=M+D
+        // D=A
+        // @R13
+        // M=D  <- store the address of segment[index]
+        // @SP
+        // M=M-1
+        // A=M
+        // D=M  <- store the stack top in D
+        // @R13
+        // A=M
+        // M=D  <- voila
     }
     else if (command->type == C_CMP)
     {
