@@ -179,6 +179,24 @@ parse_result_code validate_arguments(Command *command, parse_result *result)
             strcpy(result->message, "Non-integer segment index");
             return PARSE_ERROR;
         }
+        if (strcmp(command->arg1, "pointer") == 0)
+        {
+            if (strcmp(command->arg2, "0") != 0 &&
+                strcmp(command->arg2, "1") != 0)
+            {
+                strcpy(result->message, "pointer index must be either 0 or 1");
+                return PARSE_ERROR;
+            }
+        }
+        if (strcmp(command->arg1, "temp") == 0)
+        {
+            int index = atoi(command->arg2);
+            if (index > 7 || index < 0)
+            {
+                strcpy(result->message, "temp index must be within range 0 - 7");
+                return PARSE_ERROR;
+            }
+        }
     }
     else if (command->type == C_ARITHMETIC ||
              command->type == C_CMP ||
@@ -194,6 +212,36 @@ parse_result_code validate_arguments(Command *command, parse_result *result)
 
     return PARSE_SUCCESS;
 }
+
+
+void reverse(char s[])
+{
+    int length = strlen(s) ;
+    int c, i, j;
+
+    for (i = 0, j = length - 1; i < j; i++, j--) {
+        c = s[i];
+        s[i] = s[j];
+        s[j] = c;
+    }
+}
+
+
+void itoa(int n, char s[], int base)
+{
+    // Convert integer to string
+    int i, digit;
+
+    i = 0;
+    do {
+        digit = n % base;
+        s[i++] = digit + '0';
+    } while ((n /= base) != 0);
+
+    s[i] = '\0';
+    reverse(s);
+}
+
 
 parse_result parse_line(char *line, ParsedCommands *commands)
 {
@@ -261,74 +309,104 @@ void encode(char *line,  Command *command, int line_num, char *filename)
             sprintf(line, "// %s\n@%s\nD=A\n@SP\nM=M+1\nA=M-1\nM=D\n\n", 
                     command->cln, command->arg2);
         }
-        else if (strcmp(command->arg1, "argument"))
+        else if (strcmp(command->arg1, "argument") == 0)
         {
             sprintf(line, "// %s\n@%s\nD=A\n@ARG\nA=M+D\nD=M\n"
                           "@SP\nM=M+1\nA=M-1\nM=D\n\n",
                     command->cln, command->arg2);
         }
-        else if (strcmp(command->arg1, "local"))
+        else if (strcmp(command->arg1, "local") == 0)
         {
             sprintf(line, "// %s\n@%s\nD=A\n@LCL\nA=M+D\nD=M\n"
                           "@SP\nM=M+1\nA=M-1\nM=D\n\n",
                     command->cln, command->arg2);
         }
-        else if (strcmp(command->arg1, "this"))
+        else if (strcmp(command->arg1, "this") == 0)
         {
             sprintf(line, "// %s\n@%s\nD=A\n@THIS\nA=M+D\nD=M\n"
                           "@SP\nM=M+1\nA=M-1\nM=D\n\n",
                     command->cln, command->arg2);
         }
-        else if (strcmp(command->arg1, "that"))
+        else if (strcmp(command->arg1, "that") == 0)
         {
             sprintf(line, "// %s\n@%s\nD=A\n@THAT\nA=M+D\nD=M\n"
                           "@SP\nM=M+1\nA=M-1\nM=D\n\n",
                     command->cln, command->arg2);
         }
-        
-        // TODO: add pointer and temp
+        else if (strcmp(command->arg1, "pointer") == 0)
+        {
+            char diff[10];
+            if (strcmp(command->arg2, "0") == 0)
+                strcpy(diff, "THIS");
+            else
+                strcpy(diff, "THAT");
+
+            sprintf(line, "// %s\n@%s\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n\n",
+                    command->cln, diff);
+        }
+        else if (strcmp(command->arg1, "temp") == 0)
+        {
+            char diff[10], strindex[10];
+            int index = atoi(command->arg2);
+            itoa(index + 5, strindex, 10);  
+            sprintf(diff, "R%s", strindex);  // 0 -> "R5", 7 -> "R12"
+
+            sprintf(line, "// %s\n@%s\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n\n",
+                    command->cln, diff);
+        }
 
     }
     else if (command->type == C_POP)
     {
-        if (strcmp(command->arg1, "argument"))
+        if (strcmp(command->arg1, "argument") == 0)
         {
             sprintf(line, "// %s\n@%s\nD=A\n@ARG\nA=M+D\nD=A\n"
                           "@R13\nM=D\n@SP\nM=M-1\nA=M\nD=M\n"
                           "@R13\nA=M\nM=D\n\n",
                     command->cln, command->arg2);
         }
-        else if (strcmp(command->arg1, "local"))
+        else if (strcmp(command->arg1, "local") == 0)
         {
             sprintf(line, "// %s\n@%s\nD=A\n@LCL\nA=M+D\nD=A\n"
                           "@R13\nM=D\n@SP\nM=M-1\nA=M\nD=M\n"
                           "@R13\nA=M\nM=D\n\n",
                     command->cln, command->arg2);
         }
-        else if (strcmp(command->arg1, "this"))
+        else if (strcmp(command->arg1, "this") == 0)
         {
             sprintf(line, "// %s\n@%s\nD=A\n@THIS\nA=M+D\nD=A\n"
                           "@R13\nM=D\n@SP\nM=M-1\nA=M\nD=M\n"
                           "@R13\nA=M\nM=D\n\n",
                     command->cln, command->arg2);
         }
-        else if (strcmp(command->arg1, "that"))
+        else if (strcmp(command->arg1, "that") == 0)
         {
             sprintf(line, "// %s\n@%s\nD=A\n@THAT\nA=M+D\nD=A\n"
                           "@R13\nM=D\n@SP\nM=M-1\nA=M\nD=M\n"
                           "@R13\nA=M\nM=D\n\n",
                     command->cln, command->arg2);
         }
-        else if (strcmp(command->arg1, "pointer"))
+        else if (strcmp(command->arg1, "pointer") == 0)
         {
-            // sprintf(line, "// %s\n@%s\nD=A\n@THAT\nA=M+D\nD=A\n"
-            //               "@R13\nM=D\n@SP\nM=M-1\nA=M\nD=M\n"
-            //               "@R13\nA=M\nM=D\n\n",
-            //         command->cln, command->arg2);
-        }
+            char diff[10];
+            if (strcmp(command->arg2, "0") == 0)
+                strcpy(diff, "THIS");
+            else
+                strcpy(diff, "THAT");
 
-        // TODO: add pointer and temp
-        
+            sprintf(line, "// %s\n@SP\nM=M-1\nA=M\nD=M\n@%s\nM=D\n\n",
+                    command->cln, diff);
+        }
+        else if (strcmp(command->arg1, "temp") == 0)
+        {
+            char diff[10], strindex[10];
+            int index = atoi(command->arg2);
+            itoa(index + 5, strindex, 10);  
+            sprintf(diff, "R%s", strindex);  // 0 -> "R5", 7 -> "R12"
+            
+            sprintf(line, "// %s\n@SP\nM=M-1\nA=M\nD=M\n@%s\nM=D\n\n",
+                    command->cln, diff);
+        }
     }
     else if (command->type == C_CMP)
     {
