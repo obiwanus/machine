@@ -291,22 +291,44 @@ void encode(char *line,  Command *command, int line_num, char *filename)
     }
     else if (command->type == C_POP)
     {
-        // TODO: use a temp variable to pop
+        if (strcmp(command->arg1, "argument"))
+        {
+            sprintf(line, "// %s\n@%s\nD=A\n@ARG\nA=M+D\nD=A\n"
+                          "@R13\nM=D\n@SP\nM=M-1\nA=M\nD=M\n"
+                          "@R13\nA=M\nM=D\n\n",
+                    command->cln, command->arg2);
+        }
+        else if (strcmp(command->arg1, "local"))
+        {
+            sprintf(line, "// %s\n@%s\nD=A\n@LCL\nA=M+D\nD=A\n"
+                          "@R13\nM=D\n@SP\nM=M-1\nA=M\nD=M\n"
+                          "@R13\nA=M\nM=D\n\n",
+                    command->cln, command->arg2);
+        }
+        else if (strcmp(command->arg1, "this"))
+        {
+            sprintf(line, "// %s\n@%s\nD=A\n@THIS\nA=M+D\nD=A\n"
+                          "@R13\nM=D\n@SP\nM=M-1\nA=M\nD=M\n"
+                          "@R13\nA=M\nM=D\n\n",
+                    command->cln, command->arg2);
+        }
+        else if (strcmp(command->arg1, "that"))
+        {
+            sprintf(line, "// %s\n@%s\nD=A\n@THAT\nA=M+D\nD=A\n"
+                          "@R13\nM=D\n@SP\nM=M-1\nA=M\nD=M\n"
+                          "@R13\nA=M\nM=D\n\n",
+                    command->cln, command->arg2);
+        }
+        else if (strcmp(command->arg1, "pointer"))
+        {
+            // sprintf(line, "// %s\n@%s\nD=A\n@THAT\nA=M+D\nD=A\n"
+            //               "@R13\nM=D\n@SP\nM=M-1\nA=M\nD=M\n"
+            //               "@R13\nA=M\nM=D\n\n",
+            //         command->cln, command->arg2);
+        }
 
-        // @<index>
-        // D=A
-        // @LCL
-        // A=M+D
-        // D=A
-        // @R13
-        // M=D  <- store the address of segment[index]
-        // @SP
-        // M=M-1
-        // A=M
-        // D=M  <- store the stack top in D
-        // @R13
-        // A=M
-        // M=D  <- voila
+        // TODO: add pointer and temp
+        
     }
     else if (command->type == C_CMP)
     {
