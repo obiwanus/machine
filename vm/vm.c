@@ -68,6 +68,7 @@ int main(int argc, char *argv[])
         i++;
     }
 
+    // Encode lines
     for (int i = 0; i < commands.len; i++)
     {
         encode(code_line, &commands.entries[i], i, enc_fn);
@@ -209,6 +210,21 @@ parse_result_code validate_arguments(Command *command, parse_result *result)
             return PARSE_ERROR;
         }
     }
+    else if (command->type == C_LABEL ||
+             command->type == C_GOTO ||
+             command->type == C_IF_GOTO)
+    {
+        if (strcmp(command->arg1, "") == 0)
+        {
+            strcpy(result->message, "Argument required");
+            return PARSE_ERROR;
+        }
+        if (strcmp(command->arg2, "") != 0)
+        {
+            strcpy(result->message, "Unexpected argument");
+            return PARSE_ERROR;
+        }
+    }
 
     return PARSE_SUCCESS;
 }
@@ -259,9 +275,9 @@ parse_result parse_line(char *line, ParsedCommands *commands)
     
     char *NAMES[] = {
         "eq", "gt", "lt", "add", "sub", "and", "or", "not", "neg",
-        "push", "pop"  // to be extended
+        "push", "pop", "label", "goto", "if-goto"  // to be extended
     };
-    int TYPES[] = { C_PUSH, C_POP };
+    int TYPES[] = { C_PUSH, C_POP, C_LABEL, C_GOTO, C_IF_GOTO };
 
     sscanf(line, "%s %s %s", command->name, command->arg1, command->arg2);
 
@@ -354,7 +370,6 @@ void encode(char *line,  Command *command, int line_num, char *filename)
             sprintf(line, "// %s\n@%s\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n\n",
                     command->cln, diff);
         }
-
     }
     else if (command->type == C_POP)
     {
@@ -427,6 +442,27 @@ void encode(char *line,  Command *command, int line_num, char *filename)
         sprintf(line, "// %s\n@SP\nA=M-1\nD=M\n%s\n\n", 
                 command->cln, diff);
     }
+    else if (command->type == C_LABEL ||
+             command->type == C_GOTO ||
+             command->type == C_IF_GOTO)
+    {
+        char label[MAXLINE];
+        sprintf(label, "%s.%s", filename, command->arg1);
+
+        if (command->type == C_LABEL)
+        {
+            sprintf(line, "// %s\n(%s)\n\n", command->cln, label);
+        }
+        else if (command->type == C_GOTO)
+        {
+            sprintf(line, "// %s\n@%s\n0;JMP\n\n", command->cln, label);
+        }
+        else if (command->type == C_IF_GOTO)
+        {
+            sprintf(line, "// %s\n@SP\nAM=M-1\nD=M\n@%s\nD;JNE\n\n", command->cln, label);
+        }    
+    }
+    
     
 }
 

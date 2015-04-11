@@ -7,7 +7,7 @@
 
 typedef enum {
     C_NONE = 0, C_ARITHMETIC, C_CMP, C_UNARY, C_PUSH, C_POP, 
-    C_LABEL, C_GOTO, C_IF, C_FUNCTION, C_RETURN, C_CALL
+    C_LABEL, C_GOTO, C_IF_GOTO, C_FUNCTION, C_RETURN, C_CALL
 } command_type;
 
 typedef struct
