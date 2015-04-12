@@ -555,16 +555,21 @@ void encode(char *line,  Command *command, int line_num)
         char return_address[MAXLINE];
         sprintf(return_address, "%s$return$%d", command->enc_fn, line_num);
 
-        sprintf(line, "// %s\n"
-                      "@%s\nD=A\n@SP\nM=M+1\nA=M-1\nM=D\n"    // push ret addr
-                      "@LCL\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"   // push LCL
-                      "@ARG\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"   // push ARG
-                      "@THIS\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"  // push LCL
-                      "@THAT\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"  // push LCL
-                      ""    // TODO: ARG = SP-n-5 etc.
-                      ""
-                      "\n\n", 
-                command->cln, return_address);
+        sprintf(
+            line, 
+            "// %s\n"
+            "// push ret addr\n@%s\nD=A\n@SP\nM=M+1\nA=M-1\nM=D\n"    
+            "// push LCL\n@LCL\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"   
+            "// push ARG\n@ARG\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"   
+            "// push THIS\n@THIS\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"
+            "// push THAT\n@THAT\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"
+            "// ARG = SP-n-5\n@SP\nD=M\n@%s\nD=D-A\n@5\nD=D-A\n@ARG\nM=D\n"
+            "// LCL = SP\n@SP\nD=M\n@LCL\nM=D\n"
+            "// goto f\n@%s$label\n0;JMP\n"
+            "// return address\n(%s)\n\n", 
+            command->cln, return_address, command->arg2, 
+            command->arg1, return_address
+        );
     }
     else if (command->type == C_RETURN)
     {
