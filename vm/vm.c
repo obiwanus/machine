@@ -1,64 +1,110 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 #include "vm.h"
 
 
-parse_result parse_line(char *line, ParsedCommands *commands);
-void encode(char *line,  Command *command, int line_num, char *filename);
+parse_result parse_line(char *line, ParsedCommands *commands, char *enc_fn);
+void parse_file(char *filename, ParsedCommands *commands);
+void encode(char *line, Command *command, int line_num);
+int is_directory(char *path);
 
 
 int main(int argc, char *argv[])
 {
     if (argc < 2)
     {
-        printf("No source file specified\n");
+        printf("No source file/dir specified\n");
         return 1;
     }
 
-    char *filename = argv[1];
-    FILE *source = fopen(filename, "rb");
-    if (source == NULL) 
+    ParsedCommands commands = {};
+
+    char *source_path = argv[1];
+    
+    if (!is_directory(source_path)) 
     {
-        printf("Cannot open file %s\n", filename);   
-        return 1; 
+        parse_file(source_path, &commands);
+    }
+    else 
+    {
+        DIR *d = opendir(source_path);
+        if (d == NULL)
+        {
+            printf("Cannot open %s\n", source_path);
+            return 1;
+        }
+
+        struct dirent *dir;
+        while ((dir = readdir(d)) != NULL)
+        {
+            char *extension = strrchr(dir->d_name, '.');
+            printf("Looking at %s\n", dir->d_name);
+            if (extension == NULL) continue;
+            if (strcmp(extension, ".vm") != 0) continue;
+            
+            char file_path[MAXLINE];
+            strcpy(file_path, source_path);
+            strcat(file_path, dir->d_name);   
+            parse_file(file_path, &commands);
+        }
+        closedir(d);
     }
 
-    ParsedCommands commands = {};
+    // Write file
+    char *last_slash = strrchr(source_path, '/');  // Fuck Windows
+    *last_slash = '\0';  // cut the last node
+    char dest_filename[MAXLINE];
+    strcpy(dest_filename, source_path);
+    strcat(dest_filename, "/result.asm");
+    FILE *dest = fopen(dest_filename, "wb");
+    char code_line[MAXLINE];
+
+    // Encode lines
+    for (int i = 0; i < commands.len; i++)
+    {
+        encode(code_line, &commands.entries[i], i);
+        fputs(code_line, dest);
+    }
+
+    fclose(dest);
+    printf("File %s written\n", dest_filename);
+
+    return 0;
+}
+
+
+int is_directory(char *path)
+{
+    struct stat info;
+
+    if (stat(path, &info) == -1) 
+    {
+        printf("Cannot access path %s\n", path);
+        exit(1);
+    }
+
+    return S_ISDIR(info.st_mode);
+}
+
+
+void parse_file(char *filename, ParsedCommands *commands)
+{
+    printf("Parsing %s\n", filename);
+
+    FILE *file = fopen(filename, "rb");
+    if (file == NULL)
+        return;
+
     int line_num = 0;
     char line[MAXLINE];
     parse_result result;
 
-    while (fgets(line, MAXLINE, source))
-    {
-        line_num++;
-
-        result = parse_line(line, &commands);
-        if (result.code == PARSE_BLANK)
-            continue;
-        if (result.code == PARSE_ERROR)
-        {
-            printf("Syntax error at line %d: \n%s\n", line_num, line);
-            printf("%s\n", result.message);
-            exit(1);
-        }
-    }
-
-    fclose(source);
-
-    // Write file
-    char *extension = strrchr(filename, '.');
-    if (extension && !strcmp(extension, ".vm"))
-        *extension = 0;  // cut the extension
-    char dest_filename[MAXLINE];
-    strcpy(dest_filename, filename);
-    strcat(dest_filename, ".asm");
-    FILE *dest = fopen(dest_filename, "wb");
-    char code_line[MAXLINE];
-    
     // Get filename for unique labels
-    char enc_fn[MAXLINE];  
+    char *enc_fn = malloc(sizeof(char) * MAXLINE);  // never freed  
     strcpy(enc_fn, filename);
     int i = 0;
     while (enc_fn[i] != 0 && i < MAXLINE - 1)
@@ -68,18 +114,25 @@ int main(int argc, char *argv[])
         i++;
     }
 
-    // Encode lines
-    for (int i = 0; i < commands.len; i++)
+    while (fgets(line, MAXLINE, file))
     {
-        encode(code_line, &commands.entries[i], i, enc_fn);
-        fputs(code_line, dest);
+        line_num++;
+
+        result = parse_line(line, commands, enc_fn);
+        if (result.code == PARSE_BLANK)
+            continue;
+        if (result.code == PARSE_ERROR)
+        {
+            printf("Syntax error at line %d in file %s: \n%s\n", 
+                    line_num, filename, line);
+            printf("%s\n", result.message);
+            exit(1);
+        }
     }
 
-    fclose(dest);
-    printf("File %s written\n", dest_filename);
-
-    return 0;
+    fclose(file);
 }
+
 
 void clean_line(char *line)
 {
@@ -140,7 +193,7 @@ int in_array(char *string, char *array[], int len)
 
 Command *new_command(ParsedCommands *list)
 {
-    // Returns the pointer to the next free slot
+    // Returns a pointer to the next free slot
     // for a parsed command. Allocates space.
 
     Command *result = 0;
@@ -259,7 +312,7 @@ void itoa(int n, char s[], int base)
 }
 
 
-parse_result parse_line(char *line, ParsedCommands *commands)
+parse_result parse_line(char *line, ParsedCommands *commands, char *enc_fn)
 {
     parse_result result = {};
 
@@ -296,12 +349,15 @@ parse_result parse_line(char *line, ParsedCommands *commands)
         command->type = C_UNARY;
     else
         command->type = TYPES[found_pos - 9];
+
+    command->enc_fn = enc_fn;
     
     result.code = validate_arguments(command, &result);
     return result;         
 }
 
-void encode(char *line,  Command *command, int line_num, char *filename)
+
+void encode(char *line,  Command *command, int line_num)
 {
     *line = 0;
     
@@ -426,7 +482,7 @@ void encode(char *line,  Command *command, int line_num, char *filename)
     else if (command->type == C_CMP)
     {
         char label[200];
-        sprintf(label, "%s.%d.true", filename, line_num);
+        sprintf(label, "%s.%d.true", command->enc_fn, line_num);
 
         sprintf(line, "// %s\n@SP\nAM=M-1\nD=M\nA=A-1\nD=M-D\nM=-1\n"
                       "@%s\n%s\n@SP\nA=M-1\nM=!M\n(%s)\n\n",
@@ -447,7 +503,7 @@ void encode(char *line,  Command *command, int line_num, char *filename)
              command->type == C_IF_GOTO)
     {
         char label[MAXLINE];
-        sprintf(label, "%s.%s", filename, command->arg1);
+        sprintf(label, "%s.%s", command->enc_fn, command->arg1);
 
         if (command->type == C_LABEL)
         {
@@ -462,8 +518,6 @@ void encode(char *line,  Command *command, int line_num, char *filename)
             sprintf(line, "// %s\n@SP\nAM=M-1\nD=M\n@%s\nD;JNE\n\n", command->cln, label);
         }    
     }
-    
-    
 }
 
 

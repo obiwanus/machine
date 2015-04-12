@@ -13,6 +13,7 @@ typedef enum {
 typedef struct
 {
     command_type type;
+    char *enc_fn;
     char name[20];
     char arg1[20];
     char arg2[20];
