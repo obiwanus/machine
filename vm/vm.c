@@ -27,6 +27,15 @@ int main(int argc, char *argv[])
     
     if (!is_directory(source_path)) 
     {
+        // Check extension
+        {
+            char *extension = strrchr(source_path, '.');
+            if (strcmp(extension, ".vm") != 0)
+            {
+                printf("Wrong file extension %s\n", extension);
+                exit(1);
+            }
+        }
         parse_file(source_path, &commands);
     }
     else 
@@ -55,12 +64,37 @@ int main(int argc, char *argv[])
     }
 
     // Write file
-    char *last_slash = strrchr(source_path, '/');  // Fuck Windows
-    *last_slash = '\0';  // cut the last node
-    char dest_filename[MAXLINE];
-    strcpy(dest_filename, source_path);
-    strcat(dest_filename, "/result.asm");
-    FILE *dest = fopen(dest_filename, "wb");
+    char dest_file_path[MAXLINE];
+    // path/to/dir
+    // path/to/dir/
+    // -> path/to/dir.asm
+    // path/to/dir/file.vm
+    // -> path/to/dir/file.asm
+    strcpy(dest_file_path, source_path);
+    char *last_slash = strrchr(dest_file_path, '/');  // Fuck Windows
+    if (dest_file_path[strlen(dest_file_path) - 1] == '/')
+    {
+        *last_slash = '\0';
+        last_slash = strrchr(dest_file_path, '/');
+    }
+    char *extension = strrchr(dest_file_path, '.');
+    if (extension != NULL && strcmp(extension, ".vm") == 0)
+    {
+        *extension = '\0';
+        strcat(dest_file_path, ".asm");
+    }
+    else
+    {
+        // It is a directory
+        char dest_file_name[MAXLINE];
+        strcpy(dest_file_name, last_slash);
+        strcat(dest_file_path, "/");
+        strcat(dest_file_path, dest_file_name);
+        strcat(dest_file_path, ".asm");
+    }
+    
+
+    FILE *dest = fopen(dest_file_path, "wb");
     char code_line[MAXLINE];
 
     // Encode lines
@@ -71,7 +105,7 @@ int main(int argc, char *argv[])
     }
 
     fclose(dest);
-    printf("File %s written\n", dest_filename);
+    printf("File %s written\n", dest_file_path);
 
     return 0;
 }
@@ -566,14 +600,30 @@ void encode(char *line,  Command *command, int line_num)
             "// ARG = SP-n-5\n@SP\nD=M\n@%s\nD=D-A\n@5\nD=D-A\n@ARG\nM=D\n"
             "// LCL = SP\n@SP\nD=M\n@LCL\nM=D\n"
             "// goto f\n@%s$label\n0;JMP\n"
-            "// return address\n(%s)\n\n", 
+            "// return address\n(%s)\n"
+            "\n", 
             command->cln, return_address, command->arg2, 
             command->arg1, return_address
         );
     }
     else if (command->type == C_RETURN)
     {
-        sprintf(line, "// %s\n// not implemented\n\n", command->cln);
+        // TODO: debug
+
+        sprintf(
+            line, 
+            "// %s\n"
+            "// RET = *(FRAME - 5)\n@LCL\nD=M\n@5\nD=D-A\n@R13\nM=D\n"
+            "// *ARG = pop()\n@SP\nA=M-1\nD=M\n@ARG\nM=D\n"
+            "// SP = ARG + 1\n@ARG\nD=M+1\n@SP\nM=D\n"
+            "// THAT = *(FRAME - 1)\n@LCL\nD=M-1\n@THAT\nM=D\n"
+            "// THIS = *(FRAME - 2)\n@LCL\nD=M\n@2\nD=D-A\n@THIS\nM=D\n"
+            "// ARG = *(FRAME - 3)\n@LCL\nD=M\n@3\nD=D-A\n@ARG\nM=D\n"
+            "// LCL = *(FRAME - 4)\n@LCL\nD=M\n@4\nD=D-A\n@LCL\nM=D\n"
+            "// goto RET\n@R13\nA=M\n0;JMP\n"
+            "\n",
+            command->cln
+        );
     }
 }
 
