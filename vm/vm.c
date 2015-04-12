@@ -254,7 +254,8 @@ parse_result_code validate_arguments(Command *command, parse_result *result)
     }
     else if (command->type == C_ARITHMETIC ||
              command->type == C_CMP ||
-             command->type == C_UNARY) 
+             command->type == C_UNARY ||
+             command->type == C_RETURN) 
     {
         if (strcmp(command->arg1, "") != 0 ||
             strcmp(command->arg2, "") != 0)
@@ -265,7 +266,8 @@ parse_result_code validate_arguments(Command *command, parse_result *result)
     }
     else if (command->type == C_LABEL ||
              command->type == C_GOTO ||
-             command->type == C_IF_GOTO)
+             command->type == C_IF_GOTO ||
+             command->type == C_CALL)
     {
         if (strcmp(command->arg1, "") == 0)
         {
@@ -275,6 +277,21 @@ parse_result_code validate_arguments(Command *command, parse_result *result)
         if (strcmp(command->arg2, "") != 0)
         {
             strcpy(result->message, "Unexpected argument");
+            return PARSE_ERROR;
+        }
+    }
+    else if (command->type == C_FUNCTION)
+    {
+        if (strcmp(command->arg1, "") == 0 ||
+            strcmp(command->arg2, "") == 0)
+        {
+            strcpy(result->message, "Function definition is incorrect");
+            return PARSE_ERROR;
+        }
+        int arg_num = atoi(command->arg2);
+        if ((arg_num == 0 && command->arg2[0] != '0') || arg_num < 0)
+        {
+            strcpy(result->message, "Invalid number of function arguments");
             return PARSE_ERROR;
         }
     }
@@ -328,9 +345,13 @@ parse_result parse_line(char *line, ParsedCommands *commands, char *enc_fn)
     
     char *NAMES[] = {
         "eq", "gt", "lt", "add", "sub", "and", "or", "not", "neg",
-        "push", "pop", "label", "goto", "if-goto"  // to be extended
+        "push", "pop", "label", "goto", "if-goto", "function",
+        "call", "return"
     };
-    int TYPES[] = { C_PUSH, C_POP, C_LABEL, C_GOTO, C_IF_GOTO };
+    int TYPES[] = { 
+        C_PUSH, C_POP, C_LABEL, C_GOTO, C_IF_GOTO, 
+        C_FUNCTION, C_CALL, C_RETURN
+    };
 
     sscanf(line, "%s %s %s", command->name, command->arg1, command->arg2);
 
@@ -517,6 +538,37 @@ void encode(char *line,  Command *command, int line_num)
         {
             sprintf(line, "// %s\n@SP\nAM=M-1\nD=M\n@%s\nD;JNE\n\n", command->cln, label);
         }    
+    }
+    else if (command->type == C_FUNCTION)
+    {
+        int arg_num = atoi(command->arg2);
+        
+        sprintf(line, "// %s\n(%s$label)\n", command->cln, command->arg1);
+        for (int i = 0; i < arg_num; i++)
+        {
+            strcat(line, "@SP\nM=M+1\nA=M-1\nM=0\n");  // push 0
+        }
+        strcat(line, "\n");
+    }
+    else if (command->type == C_CALL)
+    {
+        char return_address[MAXLINE];
+        sprintf(return_address, "%s$return$%d", command->enc_fn, line_num);
+
+        sprintf(line, "// %s\n"
+                      "@%s\nD=A\n@SP\nM=M+1\nA=M-1\nM=D\n"    // push ret addr
+                      "@LCL\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"   // push LCL
+                      "@ARG\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"   // push ARG
+                      "@THIS\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"  // push LCL
+                      "@THAT\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"  // push LCL
+                      ""    // TODO: ARG = SP-n-5 etc.
+                      ""
+                      "\n\n", 
+                command->cln, return_address);
+    }
+    else if (command->type == C_RETURN)
+    {
+        sprintf(line, "// %s\n// not implemented\n\n", command->cln);
     }
 }
 
