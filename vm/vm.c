@@ -301,8 +301,7 @@ parse_result_code validate_arguments(Command *command, parse_result *result)
     }
     else if (command->type == C_LABEL ||
              command->type == C_GOTO ||
-             command->type == C_IF_GOTO ||
-             command->type == C_CALL)
+             command->type == C_IF_GOTO)
     {
         if (strcmp(command->arg1, "") == 0)
         {
@@ -312,6 +311,14 @@ parse_result_code validate_arguments(Command *command, parse_result *result)
         if (strcmp(command->arg2, "") != 0)
         {
             strcpy(result->message, "Unexpected argument");
+            return PARSE_ERROR;
+        }
+    }
+    else if (command->type == C_CALL)
+    {
+        if (strcmp(command->arg1, "") == 0 || strcmp(command->arg2, "") == 0)
+        {
+            strcpy(result->message, "Argument required");
             return PARSE_ERROR;
         }
     }
