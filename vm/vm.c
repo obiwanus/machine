@@ -94,9 +94,22 @@ int main(int argc, char *argv[])
         strcat(dest_file_path, ".asm");
     }
 
-
     FILE *dest = fopen(dest_file_path, "wb");
     char code_line[MAXLINE];
+
+    // Bootstrap code
+    fputs("// Bootstrap\n\n// SP = 256\n@256\nD=A\n@SP\nM=D\n\n"
+          "// call Sys.init\n"
+          "// push ret addr\n@0\nD=A\n@SP\nM=M+1\nA=M-1\nM=D\n"
+          "// push LCL\n@LCL\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"
+          "// push ARG\n@ARG\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"
+          "// push THIS\n@THIS\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"
+          "// push THAT\n@THAT\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"
+          "// ARG = SP-n-5\n@SP\nD=M\n@0\nD=D-A\n@5\nD=D-A\n@ARG\nM=D\n"
+          "// LCL = SP\n@SP\nD=M\n@LCL\nM=D\n"
+          "// goto sys.init\n@Sys.init$label\n0;JMP\n"
+          "\n",
+          dest);
 
     // Encode lines
     for (int i = 0; i < commands.len; i++)
@@ -616,8 +629,6 @@ void encode(char *line,  Command *command, int line_num)
     }
     else if (command->type == C_RETURN)
     {
-        // TODO: debug
-
         sprintf(
             line,
             "// %s\n"
