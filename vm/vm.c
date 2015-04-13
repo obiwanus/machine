@@ -621,13 +621,13 @@ void encode(char *line,  Command *command, int line_num)
         sprintf(
             line,
             "// %s\n"
-            "// RET = *(FRAME - 5)\n@LCL\nD=M\n@5\nD=D-A\n@R13\nM=D\n"
-            "// *ARG = pop()\n@SP\nA=M-1\nD=M\n@ARG\nM=D\n"
+            "// RET = *(FRAME - 5)\n@LCL\nD=M\n@5\nA=D-A\nD=M\n@R13\nM=D\n"
+            "// *ARG = pop()\n@SP\nA=M-1\nD=M\n@ARG\nA=M\nM=D\n"
             "// SP = ARG + 1\n@ARG\nD=M+1\n@SP\nM=D\n"
-            "// THAT = *(FRAME - 1)\n@LCL\nD=M-1\n@THAT\nM=D\n"
-            "// THIS = *(FRAME - 2)\n@LCL\nD=M\n@2\nD=D-A\n@THIS\nM=D\n"
-            "// ARG = *(FRAME - 3)\n@LCL\nD=M\n@3\nD=D-A\n@ARG\nM=D\n"
-            "// LCL = *(FRAME - 4)\n@LCL\nD=M\n@4\nD=D-A\n@LCL\nM=D\n"
+            "// THAT = *(FRAME - 1)\n@LCL\nA=M-1\nD=M\n@THAT\nM=D\n"
+            "// THIS = *(FRAME - 2)\n@LCL\nD=M\n@2\nA=D-A\nD=M\n@THIS\nM=D\n"
+            "// ARG = *(FRAME - 3)\n@LCL\nD=M\n@3\nA=D-A\nD=M\n@ARG\nM=D\n"
+            "// LCL = *(FRAME - 4)\n@LCL\nD=M\n@4\nA=D-A\nD=M\n@LCL\nM=D\n"
             "// goto RET\n@R13\nA=M\n0;JMP\n"
             "\n",
             command->cln
