@@ -11,6 +11,9 @@ parse_result parse_line(char *line, ParsedCommands *commands, char *enc_fn);
 void parse_file(char *filename, ParsedCommands *commands);
 void encode(char *line, Command *command, int line_num);
 int is_directory(char *path);
+void get_dir_path(char *source_path, char *dir_path);
+void get_name_from_path(char *source_path, char *name);
+
 
 
 int main(int argc, char *argv[])
@@ -24,6 +27,8 @@ int main(int argc, char *argv[])
     ParsedCommands commands = {};
 
     char *source_path = argv[1];
+    char dest_dir_path[MAXLINE];
+    get_dir_path(source_path, dest_dir_path);
 
     if (!is_directory(source_path))
     {
@@ -55,10 +60,7 @@ int main(int argc, char *argv[])
             if (strcmp(extension, ".vm") != 0) continue;
 
             char file_path[MAXLINE];
-            strcpy(file_path, source_path);
-            if (file_path[strlen(file_path) - 1] != '/')
-                strcat(file_path, "/");
-            strcat(file_path, dir->d_name);
+            sprintf(file_path, "%s/%s", dest_dir_path, dir->d_name);
             parse_file(file_path, &commands);
         }
         closedir(d);
@@ -66,50 +68,29 @@ int main(int argc, char *argv[])
 
     // Write file
     char dest_file_path[MAXLINE];
-    // path/to/dir
-    // path/to/dir/
-    // -> path/to/dir.asm
-    // path/to/dir/file.vm
-    // -> path/to/dir/file.asm
-    strcpy(dest_file_path, source_path);
-    char *last_slash = strrchr(dest_file_path, '/');  // Fuck Windows
-    if (dest_file_path[strlen(dest_file_path) - 1] == '/')
-    {
-        *last_slash = '\0';
-        last_slash = strrchr(dest_file_path, '/');
-    }
-    char *extension = strrchr(dest_file_path, '.');
-    if (extension != NULL && strcmp(extension, ".vm") == 0)
-    {
-        *extension = '\0';
-        strcat(dest_file_path, ".asm");
-    }
-    else
-    {
-        // It is a directory
-        char dest_file_name[MAXLINE];
-        strcpy(dest_file_name, last_slash + 1);
-        strcat(dest_file_path, "/");
-        strcat(dest_file_path, dest_file_name);
-        strcat(dest_file_path, ".asm");
-    }
+    char dest_file_name[MAXLINE];
+    get_name_from_path(source_path, dest_file_name);
+    sprintf(dest_file_path, "%s/%s.asm", dest_dir_path, dest_file_name);
 
     FILE *dest = fopen(dest_file_path, "wb");
     char code_line[MAXLINE];
 
-    // Bootstrap code
-    fputs("// Bootstrap\n\n// SP = 256\n@256\nD=A\n@SP\nM=D\n\n"
-          "// call Sys.init\n"
-          "// push ret addr\n@0\nD=A\n@SP\nM=M+1\nA=M-1\nM=D\n"
-          "// push LCL\n@LCL\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"
-          "// push ARG\n@ARG\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"
-          "// push THIS\n@THIS\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"
-          "// push THAT\n@THAT\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"
-          "// ARG = SP-n-5\n@SP\nD=M\n@0\nD=D-A\n@5\nD=D-A\n@ARG\nM=D\n"
-          "// LCL = SP\n@SP\nD=M\n@LCL\nM=D\n"
-          "// goto sys.init\n@Sys.init$label\n0;JMP\n"
-          "\n",
-          dest);
+    if (is_directory(source_path))
+    {
+        // Bootstrap code
+        fputs("// Bootstrap\n\n// SP = 256\n@256\nD=A\n@SP\nM=D\n\n"
+              "// call Sys.init\n"
+              "// push ret addr\n@0\nD=A\n@SP\nM=M+1\nA=M-1\nM=D\n"
+              "// push LCL\n@LCL\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"
+              "// push ARG\n@ARG\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"
+              "// push THIS\n@THIS\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"
+              "// push THAT\n@THAT\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n"
+              "// ARG = SP-n-5\n@SP\nD=M\n@0\nD=D-A\n@5\nD=D-A\n@ARG\nM=D\n"
+              "// LCL = SP\n@SP\nD=M\n@LCL\nM=D\n"
+              "// goto sys.init\n@Sys.init$label\n0;JMP\n"
+              "\n",
+              dest);
+    }
 
     // Encode lines
     for (int i = 0; i < commands.len; i++)
@@ -122,6 +103,44 @@ int main(int argc, char *argv[])
     printf("File %s written\n", dest_file_path);
 
     return 0;
+}
+
+
+char *get_last_slash(char *source_path)
+{
+    char *last_slash = strrchr(source_path, '/');  // Fuck Windows
+    if (source_path[strlen(source_path) - 1] == '/')
+    {
+        *last_slash = '\0';
+        last_slash = strrchr(source_path, '/');
+    }
+    return last_slash;
+}
+
+
+void get_dir_path(char *source_path, char *dir_path)
+{
+    // path/to/file.ext -> "path/to"
+    // path/to/dir[/] -> "path/to/dir"
+
+    strcpy(dir_path, source_path);
+
+    char *last_slash = get_last_slash(dir_path);
+    *last_slash = '\0';
+}
+
+
+void get_name_from_path(char *source_path, char *name)
+{
+    // path/to/file.ext -> "file"
+    // path/to/dir[/] -> "dir"
+
+    char *last_slash = get_last_slash(source_path);
+    strcpy(name, last_slash + 1);
+
+    char *extension = strrchr(name, '.');
+    if (extension != NULL)
+        *extension = '\0';
 }
 
 
@@ -139,11 +158,11 @@ int is_directory(char *path)
 }
 
 
-void parse_file(char *filename, ParsedCommands *commands)
+void parse_file(char *file_path, ParsedCommands *commands)
 {
-    printf("Parsing %s\n", filename);
+    printf("Parsing %s\n", file_path);
 
-    FILE *file = fopen(filename, "rb");
+    FILE *file = fopen(file_path, "rb");
     if (file == NULL)
         return;
 
@@ -152,21 +171,14 @@ void parse_file(char *filename, ParsedCommands *commands)
     parse_result result;
 
     // Get filename for unique labels
-    char *enc_fn = malloc(sizeof(char) * MAXLINE);  // never freed
-    strcpy(enc_fn, filename);
-    int i = 0;
-    while (enc_fn[i] != 0 && i < MAXLINE - 1)
-    {
-        if (enc_fn[i] == '.' || enc_fn[i] == '/')
-            enc_fn[i] = '$';
-        i++;
-    }
+    char *filename = malloc(sizeof(char) * MAXLINE);  // never freed
+    get_name_from_path(file_path, filename);
 
     while (fgets(line, MAXLINE, file))
     {
         line_num++;
 
-        result = parse_line(line, commands, enc_fn);
+        result = parse_line(line, commands, filename);
         if (result.code == PARSE_BLANK)
             continue;
         if (result.code == PARSE_ERROR)
