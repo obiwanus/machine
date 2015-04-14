@@ -481,6 +481,11 @@ void encode(char *line,  Command *command, int line_num)
                           "@SP\nM=M+1\nA=M-1\nM=D\n\n",
                     command->cln, command->arg2);
         }
+        else if (strcmp(command->arg1, "static") == 0)
+        {
+            sprintf(line, "// %s\n@%s.static.%s\nD=M\n@SP\nM=M+1\nA=M-1\nM=D\n\n",
+                    command->cln, command->enc_fn, command->arg2);
+        }
         else if (strcmp(command->arg1, "pointer") == 0)
         {
             char diff[10];
@@ -518,6 +523,11 @@ void encode(char *line,  Command *command, int line_num)
                           "@R13\nM=D\n@SP\nM=M-1\nA=M\nD=M\n"
                           "@R13\nA=M\nM=D\n\n",
                     command->cln, command->arg2);
+        }
+        else if (strcmp(command->arg1, "static") == 0)
+        {
+            sprintf(line, "// %s\n@SP\nAM=M-1\nD=M\n@%s.static.%s\nM=D\n\n",
+                    command->cln, command->enc_fn, command->arg2);
         }
         else if (strcmp(command->arg1, "this") == 0)
         {
