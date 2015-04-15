@@ -120,13 +120,14 @@ char *get_last_slash(char *source_path)
 
 void get_dir_path(char *source_path, char *dir_path)
 {
-    // path/to/file.ext -> "path/to"
     // path/to/dir[/] -> "path/to/dir"
+    // path/to/file.ext -> "path/to"
 
     strcpy(dir_path, source_path);
-
     char *last_slash = get_last_slash(dir_path);
-    *last_slash = '\0';
+
+    if (!is_directory(dir_path))
+        *last_slash = '\0';
 }
 
 
