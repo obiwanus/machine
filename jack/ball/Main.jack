@@ -1,0 +1,115 @@
+
+class Main
+{
+    function void main()
+    {
+        var boolean finish;
+        var int x;
+        var int y;
+        var int speed_x;
+        var int speed_y;
+        var int radius;
+        var char key;
+
+        do Output.printString("Ball!");
+
+        let x = 50;
+        let y = 50;
+        let radius = 10;
+        let speed_x = 3;
+        let speed_y = 2;
+
+        let finish = false;
+        while (~finish)
+        {
+            // Erase previous ball
+            do Screen.setColor(false);
+            do Screen.drawCircle(x, y, radius);
+
+            let key = Keyboard.keyPressed();
+
+            if (key = 81) {
+                let finish = true;
+            }
+            if (key = 90) {
+                // z
+                let radius = radius - 1;
+                if (radius < 2)
+                {
+                    let radius = 2;
+                }
+
+            }
+            if (key = 88) {
+                // x
+                let radius = radius + 1;
+                if (radius > 100)
+                {
+                    let radius = 100;
+                }
+            }
+            if (key = 131) {
+                // up
+                let speed_y = speed_y - 1;
+            }
+            if (key = 133) {
+                // down
+                let speed_y = speed_y + 1;
+            }
+            if (key = 130) {
+                // left
+                let speed_x = speed_x - 1;
+            }
+            if (key = 132) {
+                // right
+                let speed_x = speed_x + 1;
+            }
+
+            let x = x + speed_x;
+            let y = y + speed_y;
+            if (speed_x > 10)
+            {
+                let speed_x = 10;
+            }
+            if (speed_x < -10)
+            {
+                let speed_x = -10;
+            }
+            if (speed_y > 10)
+            {
+                let speed_y = 10;
+            }
+            if (speed_y < -10)
+            {
+                let speed_y = -10;
+            }
+            if ((x + radius) > 510)
+            {
+                let x = 511 - radius;
+                let speed_x = -speed_x;
+            }
+            if ((x - radius) < 1)
+            {
+                let x = radius + 1;
+                let speed_x = -speed_x;
+            }
+            if ((y + radius) > 254)
+            {
+                let y = 255 - radius;
+                let speed_y = -speed_y;
+            }
+            if ((y - radius) < 1)
+            {
+                let y = radius + 1;
+                let speed_y = -speed_y;
+            }
+
+            // Draw new ball
+            do Screen.setColor(true);
+            do Screen.drawCircle(x, y, radius);
+            do Sys.wait(30);
+        }
+
+        return;
+    }
+}
