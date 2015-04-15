@@ -1,0 +1,35 @@
+
+class Random
+{
+    field int seed;
+
+    constructor Random new(int Aseed)
+    {
+        let seed = Aseed;
+        return this;
+    }
+
+    method int getSeed()
+    {
+        return seed;
+    }
+
+    method void setSeed(int Aseed)
+    {
+        let seed = Aseed;
+        return;
+    }
+
+    method int generate(int max)
+    {
+        var int result;
+
+        if (max < 2)
+        {
+            return 0;
+        }
+
+        let result = seed - (max * (seed / max));
+        return result;
+    }
+}

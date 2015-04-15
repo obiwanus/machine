@@ -1,0 +1,64 @@
+
+class Main
+{
+    function void main()
+    {
+        var String input;
+        var Random random;
+        var int screen_counter;
+        var Array words;
+        var int i;
+
+        let random = Random.new(12);
+        let screen_counter = 0;
+        let words = Array.new(100);
+
+        do Output.printString("Hi, I'm a parrot!");
+        do Output.println();
+
+        let input = String.new(50);
+        let input = Keyboard.readLine("> ");
+
+        // TODO: string copying
+
+        let i = 0;
+        while ((input.length() > 0) & (i < 100))
+        {
+            let words[i] = Main.stringCopy(input);
+            let i = i + 1;
+            let screen_counter = screen_counter + 1;
+            do random.setSeed(input.length() + random.getSeed());
+
+            do Output.printString(words[random.generate(i)]);
+            do Output.println();
+            do Output.println();
+
+            if (screen_counter > 7)
+            {
+                do Screen.clearScreen();
+                do Output.moveCursor(0, 0);
+                let screen_counter = 0;
+            }
+            let input = Keyboard.readLine("> ");
+        }
+
+        do Output.printString("Bye!");
+        return;
+    }
+
+    function String stringCopy(String source)
+    {
+        var int i;
+        var String result;
+
+        let result = String.new(source.length() + 1);
+
+        let i = 0;
+        while (i < source.length()) {
+            do result.appendChar(source.charAt(i));
+            // do Output.printChar(source.charAt(i));
+            let i = i + 1;
+        }
+        return result;
+    }
+}
