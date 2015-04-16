@@ -1,0 +1,57 @@
+
+class Main
+{
+    function void main()
+    {
+        var int enemy_number;
+        var Array invaders;
+        var Invader invader;
+        var int i;
+        var boolean game_over;
+
+        // Fill screen with black
+        do Screen.setColor(true);
+        do Screen.drawRectangle(0, 0, 511, 255);
+
+        let enemy_number = 1;
+        let invaders = Array.new(enemy_number);
+
+        // Init enemies
+        let i = 0;
+        while (i < enemy_number)
+        {
+            let invaders[i] = Invader.new(30 + (i * 80), 20);
+            let invader = invaders[i];
+            do invader.draw();
+            let i = i + 1;
+        }
+
+        let game_over = false;
+        while (~game_over)
+        {
+            // Move enemies
+            let i = 0;
+            while (i < enemy_number)
+            {
+                let invader = invaders[i];
+                do invader.erase();
+                do invader.move();
+                do invader.draw();
+                let i = i + 1;
+            }
+
+            if (invader.getY() > 180)
+            {
+                let game_over = true;
+            }
+            do Sys.wait(1500);
+        }
+
+
+        // Game over
+        do Screen.clearScreen();
+        do Output.printString("Game Over");
+        while (true) { do Sys.wait(10); }  // avoid message in the end
+        return;
+    }
+}
