@@ -58,9 +58,9 @@ class Invader
 
     method void draw()
     {
-        do Screen.setColor(false);
-        do rect(0, 0, 11, 8);
         do Screen.setColor(true);
+        do rect(0, 0, 11, 8);
+        do Screen.setColor(false);
 
         // Top
         do rect(0, 0, 2, 3);
@@ -89,7 +89,7 @@ class Invader
 
     method void erase()
     {
-        do Screen.setColor(true);
+        do Screen.setColor(false);
         do rect(0, 0, 11, 8);
         return;
     }

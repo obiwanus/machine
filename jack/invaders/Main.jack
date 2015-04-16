@@ -9,11 +9,7 @@ class Main
         var int i;
         var boolean game_over;
 
-        // Fill screen with black
-        do Screen.setColor(true);
-        do Screen.drawRectangle(0, 0, 511, 255);
-
-        let enemy_number = 1;
+        let enemy_number = 5;
         let invaders = Array.new(enemy_number);
 
         // Init enemies
