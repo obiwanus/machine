@@ -13,7 +13,7 @@ class Invader
         let y = Ay;
         let direction = 1;
         let move_count = 0;
-        let px = 4;
+        let px = 3;
 
         return this;
     }
@@ -27,7 +27,7 @@ class Invader
 
     method void move()
     {
-        if ((move_count * direction * direction) > 4)
+        if ((move_count * direction * direction) > 7)
         {
             let direction = -direction;
             let move_count = 0;

@@ -6,10 +6,13 @@ class Main
         var int enemy_number;
         var Array invaders;
         var Invader invader;
+        var Player player;
         var int i;
         var boolean game_over;
+        var boolean you_win;
+        var int player_turns;
 
-        let enemy_number = 5;
+        let enemy_number = 6;
         let invaders = Array.new(enemy_number);
 
         // Init enemies
@@ -22,30 +25,51 @@ class Main
             let i = i + 1;
         }
 
+        // TODO:
+        // Kill enemy
+        // You win/lose
+        // More enemy rows
+        // Enemy fires back
+
+        // Init player
+        let player = Player.new();
+        do player.draw();
+
         let game_over = false;
+        let you_win = false;
+        let player_turns = 0;
         while (~game_over)
         {
-            // Move enemies
-            let i = 0;
-            while (i < enemy_number)
+            let player_turns = player_turns + 1;
+            do player.update();
+
+            if (player_turns > 40)
             {
-                let invader = invaders[i];
-                do invader.erase();
-                do invader.move();
-                do invader.draw();
-                let i = i + 1;
+                // Move enemies
+                let i = 0;
+                while (i < enemy_number)
+                {
+                    let invader = invaders[i];
+                    do invader.erase();
+                    do invader.move();
+                    do invader.draw();
+                    let i = i + 1;
+                }
+                let player_turns = 0;
             }
 
             if (invader.getY() > 180)
             {
                 let game_over = true;
             }
-            do Sys.wait(1500);
+
+            do Sys.wait(10);
         }
 
 
         // Game over
         do Screen.clearScreen();
+        // TODO: you win
         do Output.printString("Game Over");
         while (true) { do Sys.wait(10); }  // avoid message in the end
         return;

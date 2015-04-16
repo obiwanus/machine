@@ -1,0 +1,168 @@
+
+class Player
+{
+    field int x;
+    field int y;
+    field int px;
+    field int player_width;
+    field int player_height;
+    field Array rockets;
+    field int rocket_num;
+    field int cooldown;
+
+    constructor Player new()
+    {
+        let player_width = 9;
+        let player_height = 5;
+        let px = 2;
+        let x = 100;
+        let y = 254 - (px * player_height);
+        let cooldown = 0;
+        let rocket_num = 6;
+        let rockets = Array.new(rocket_num);
+        do rockets_init();
+
+        return this;
+    }
+
+    method void rockets_init()
+    {
+        var int i;
+
+        let i = 0;
+        while (i < rocket_num)
+        {
+            let rockets[i] = Rocket.new(0, y - 6);
+            let i = i + 1;
+        }
+        return;
+    }
+
+    method void rockets_update()
+    {
+        var int i;
+        var Rocket rocket;
+
+        let i = 0;
+        while (i < rocket_num)
+        {
+            let rocket = rockets[i];
+            do rocket.update();
+            let i = i + 1;
+        }
+        return;
+    }
+
+    method void rect(int rx, int ry, int width, int height)
+    {
+        do Screen.drawRectangle(x + (rx * px), y + (ry * px),
+                                x + (rx * px) + (width * px),
+                                y + (ry * px) + (height * px));
+        return;
+    }
+
+    method void pixel(int rx, int ry)
+    {
+        do rect(rx, ry, 1, 1);
+        return;
+    }
+
+    method void move(int direction)
+    {
+        do erase();
+
+        let x = x + (px * direction);
+        if (x < px)
+        {
+            let x = 0;
+        }
+        if (x > (511 - (9 * px)))
+        {
+            let x = 511 - (9 * px);
+        }
+
+        do draw();
+
+        return;
+    }
+
+    method void fire()
+    {
+        var int i;
+        var Rocket rocket;
+        var boolean is_free;
+
+        let i = 0;
+        while (i < rocket_num)
+        {
+            let rocket = rockets[i];
+            let is_free = rocket.isFree();
+            if (is_free)
+            {
+                do rocket.fire(x + ((player_width * px) / 2) - 1);
+                return;
+            }
+            let i = i + 1;
+        }
+        return;
+    }
+
+    method void update()
+    {
+        var char key;
+        // var String keystr;
+
+        let key = Keyboard.keyPressed();
+
+        if (key = 130) {
+            do move(-1);
+        }
+        if (key = 132) {
+            do move(1);
+        }
+        if (key = 32)
+        {
+            if (cooldown = 0)
+            {
+                do fire();
+                let cooldown = 20;
+            }
+        }
+
+        if (cooldown > 0)
+        {
+            let cooldown = cooldown - 1;
+        }
+
+        do rockets_update();
+
+        // if (key > 0)
+        // {
+        //     let keystr = String.new(10);
+        //     do keystr.setInt(key);
+        //     do Output.printString(keystr);
+        // }
+
+        return;
+    }
+
+    method void draw()
+    {
+        do Screen.setColor(true);
+        do rect(1, 2, 7, 3);
+        do rect(3, 1, 3, 1);
+        do pixel(4, 0);
+        do pixel(0, 3);
+        do pixel(8, 3);
+
+        return;
+    }
+
+    method void erase()
+    {
+        do Screen.setColor(false);
+        do rect(0, 0, 9, 5);
+
+        return;
+    }
+}

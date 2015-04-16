@@ -1,0 +1,74 @@
+
+class Rocket
+{
+    field int init_y;
+    field int x;
+    field int y;
+    field int width;
+    field int height;
+    field bool active;
+
+    constructor Rocket new(int Ax, int Ay)
+    {
+        let init_y = Ay;
+        let x = Ax;
+        let y = Ay;
+        let width = 2;
+        let height = 5;
+        let active = false;
+
+        return this;
+    }
+
+    method void update()
+    {
+        if (active)
+        {
+            do erase();
+
+            let y = y - 2;
+            if (y < 2)
+            {
+                do destroy();
+            }
+            else
+            {
+                do draw();
+            }
+        }
+        return;
+    }
+
+    method void destroy()
+    {
+        let active = false;
+        let y = init_y;
+        return;
+    }
+
+    method void draw()
+    {
+        do Screen.setColor(true);
+        do Screen.drawRectangle(x, y, x + width, y + height);
+        return;
+    }
+
+    method void erase()
+    {
+        do Screen.setColor(false);
+        do Screen.drawRectangle(x, y, x + width, y + height);
+        return;
+    }
+
+    method boolean isFree()
+    {
+        return ~active;
+    }
+
+    method void fire(int Ax)
+    {
+        let active = true;
+        let x = Ax;
+        return;
+    }
+}
