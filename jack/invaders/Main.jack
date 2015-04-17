@@ -4,31 +4,45 @@ class Main
     function void main()
     {
         var int enemy_number;
+        var int enemy_rows;
+        var int enemies_killed;
         var Array invaders;
         var Invader invader;
         var Player player;
         var int i;
+        var int j;
+        var int tmp_x;
+        var int tmp_y;
         var boolean game_over;
         var boolean you_win;
         var int player_turns;
+        var Rocket rocket;
 
-        let enemy_number = 6;
-        let invaders = Array.new(enemy_number);
+        let enemies_killed = 0;
+        let enemy_number = 9;
+        let enemy_rows = 4;
+        let invaders = Array.new(enemy_number * enemy_rows);
 
         // Init enemies
         let i = 0;
-        while (i < enemy_number)
+        while (i < enemy_rows)
         {
-            let invaders[i] = Invader.new(30 + (i * 80), 20);
-            let invader = invaders[i];
-            do invader.draw();
+            let j = 0;
+            while (j < enemy_number)
+            {
+                let invaders[(i * enemy_number) + j] = Invader.new(
+                    30 + (j * 50),  // x
+                    20 + (30 * i),  // y
+                    i + 1  // type
+                );
+                let invader = invaders[i];
+                do invader.draw();
+                let j = j + 1;
+            }
             let i = i + 1;
         }
 
         // TODO:
-        // Kill enemy
-        // You win/lose
-        // More enemy rows
         // Enemy fires back
 
         // Init player
@@ -43,34 +57,63 @@ class Main
             let player_turns = player_turns + 1;
             do player.update();
 
-            if (player_turns > 40)
+            if (player_turns > (50 - enemies_killed))
             {
                 // Move enemies
                 let i = 0;
-                while (i < enemy_number)
+                while (i < (enemy_number * enemy_rows))
                 {
                     let invader = invaders[i];
-                    do invader.erase();
                     do invader.move();
-                    do invader.draw();
                     let i = i + 1;
                 }
                 let player_turns = 0;
             }
 
-            if (invader.getY() > 180)
+            // Check collisions
+            let i = 0;
+            while (i < (enemy_number * enemy_rows))
+            {
+                let invader = invaders[i];
+                if (invader.isAlive())
+                {
+                    let rocket = invader.collides(
+                        player.getRockets(),
+                        player.getRocketNum()
+                    );
+                    if (rocket)
+                    {
+                        do invader.die();
+                        do rocket.destroy();
+                        let enemies_killed = enemies_killed + 1;
+                    }
+                }
+                let i = i + 1;
+            }
+
+            let invader = invaders[0];
+            if (invader.getY() > 150)
             {
                 let game_over = true;
             }
-
-            do Sys.wait(10);
+            if (enemies_killed = (enemy_rows * enemy_number))
+            {
+                let you_win = true;
+                let game_over = true;
+            }
         }
 
 
         // Game over
-        do Screen.clearScreen();
-        // TODO: you win
-        do Output.printString("Game Over");
+        do Output.moveCursor(10, 25);
+        if (you_win)
+        {
+            do Output.printString("You Win");
+        }
+        else
+        {
+            do Output.printString("Game Over");
+        }
         while (true) { do Sys.wait(10); }  // avoid message in the end
         return;
     }

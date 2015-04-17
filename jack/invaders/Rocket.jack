@@ -41,6 +41,7 @@ class Rocket
 
     method void destroy()
     {
+        do erase();
         let active = false;
         let y = init_y;
         return;
@@ -63,6 +64,31 @@ class Rocket
     method boolean isFree()
     {
         return ~active;
+    }
+
+    method boolean isActive()
+    {
+        return active;
+    }
+
+    method int getRight()
+    {
+        return x + width;
+    }
+
+    method int getBottom()
+    {
+        return y + height;
+    }
+
+    method int getTop()
+    {
+        return y;
+    }
+
+    method int getLeft()
+    {
+        return x;
     }
 
     method void fire(int Ax)

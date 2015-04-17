@@ -53,6 +53,16 @@ class Player
         return;
     }
 
+    method Array getRockets()
+    {
+        return rockets;
+    }
+
+    method int getRocketNum()
+    {
+        return rocket_num;
+    }
+
     method void rect(int rx, int ry, int width, int height)
     {
         do Screen.drawRectangle(x + (rx * px), y + (ry * px),

@@ -4,16 +4,24 @@ class Invader
     field int x;
     field int y;
     field int px;
+    field int width;
+    field int height;
     field int direction;
     field int move_count;
+    field int type;
+    field boolean is_alive;
 
-    constructor Invader new(int Ax, int Ay)
+    constructor Invader new(int Ax, int Ay, int Atype)
     {
         let x = Ax;
         let y = Ay;
+        let width = 10;
+        let height = 8;
         let direction = 1;
         let move_count = 0;
-        let px = 3;
+        let px = 2;
+        let type = Atype;
+        let is_alive = true;
 
         return this;
     }
@@ -27,7 +35,14 @@ class Invader
 
     method void move()
     {
-        if ((move_count * direction * direction) > 7)
+        if (~is_alive)
+        {
+            return;
+        }
+
+        do erase();
+
+        if ((move_count * direction * direction) > 9)
         {
             let direction = -direction;
             let move_count = 0;
@@ -38,6 +53,44 @@ class Invader
             let x = x + (px * direction);
             let move_count = move_count + 1;
         }
+
+        do draw();
+
+        return;
+    }
+
+    method Rocket collides(Array rockets, int rocket_num)
+    {
+        var Rocket rocket;
+        var int i;
+
+        let i = 0;
+        while (i < rocket_num)
+        {
+            let rocket = rockets[i];
+            if (rocket.isActive() &
+                (x < rocket.getRight()) &
+                ((x + (px * width)) > rocket.getLeft()) &
+                (y < rocket.getBottom()) &
+                ((y + (px * height)) > rocket.getTop()))
+            {
+                return rocket;
+            }
+            let i = i + 1;
+        }
+
+        return 0;
+    }
+
+    method boolean isAlive()
+    {
+        return is_alive;
+    }
+
+    method void die()
+    {
+        let is_alive = false;
+        do erase();
 
         return;
     }
@@ -59,30 +112,105 @@ class Invader
     method void draw()
     {
         do Screen.setColor(true);
-        do rect(0, 0, 11, 8);
-        do Screen.setColor(false);
 
-        // Top
-        do rect(0, 0, 2, 3);
-        do pixel(2, 1);
-        do pixel(0, 3);
-        do rect(3, 0, 5, 1);
-        do rect(4, 1, 3, 1);
-        do rect(9, 0, 2, 3);
-        do pixel(8, 1);
-        do pixel(10, 3);
+        if (type = 1)
+        {
+            // Left and right sides
+            do rect(0, 4, 1, 3);
+            do rect(1, 3, 1, 2);
+            do rect(9, 3, 1, 2);
+            do rect(10, 4, 1, 3);
 
-        // Eyes
-        do pixel(3, 3);
-        do pixel(7, 3);
+            // Horns
+            do pixel(2, 0);
+            do pixel(3, 1);
+            do pixel(8, 0);
+            do pixel(7, 1);
 
-        // Bottom
-        do rect(1, 5, 1, 2);
-        do rect(0, 7, 3, 1);
-        do rect(3, 6, 5, 1);
-        do rect(5, 7, 1, 1);
-        do rect(8, 7, 3, 1);
-        do rect(9, 5, 1, 2);
+            // Body
+            do rect(2, 2, 7, 4);
+
+            // "Legs"
+            do pixel(2, 6);
+            do rect(3, 7, 2, 1);
+            do rect(6, 7, 2, 1);
+            do pixel(8, 6);
+
+            // Eyes
+            do Screen.setColor(false);
+            do pixel(3, 3);
+            do pixel(7, 3);
+
+            return;
+        }
+        if (type = 2)
+        {
+            do rect(4, 0, 2, 1);
+            do rect(3, 1, 4, 1);
+            do rect(2, 2, 6, 1);
+            do rect(1, 3, 8, 2);
+            do pixel(3, 5);
+            do pixel(2, 6);
+            do pixel(1, 7);
+            do pixel(3, 7);
+            do rect(4, 6, 2, 1);
+            do pixel(6, 5);
+            do pixel(7, 6);
+            do pixel(6, 7);
+            do pixel(8, 7);
+
+            // Eyes
+            do Screen.setColor(false);
+            do pixel(3, 3);
+            do pixel(6, 3);
+
+            return;
+        }
+        if (type = 3)
+        {
+            // Sides
+            do rect(0, 1, 1, 4);
+            do rect(1, 3, 1, 3);
+            do rect(9, 3, 1, 3);
+            do rect(10, 1, 1, 4);
+
+            // Body
+            do rect(2, 2, 7, 4);
+
+            // Horns
+            do pixel(2, 0);
+            do pixel(3, 1);
+            do pixel(7, 1);
+            do pixel(8, 0);
+
+            // Legs
+            do pixel(2, 6);
+            do pixel(1, 7);
+            do pixel(8, 6);
+            do pixel(9, 7);
+
+            // Eyes
+            do Screen.setColor(false);
+            do pixel(3, 3);
+            do pixel(7, 3);
+
+            return;
+        }
+        else
+        {
+            do rect(4, 0, 2, 1);
+            do rect(2, 1, 6, 1);
+            do rect(1, 2, 8, 3);
+            do rect(3, 5, 4, 1);
+            do rect(4, 6, 2, 1);
+            do pixel(2, 6);
+            do pixel(1, 7);
+            do pixel(7, 6);
+            do pixel(8, 7);
+            do Screen.setColor(false);
+            do pixel(3, 3);
+            do pixel(6, 3);
+        }
 
         return;
     }
