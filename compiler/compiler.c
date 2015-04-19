@@ -9,6 +9,7 @@
 
 
 void compile_file(char *filename);
+parse_result parse_line(char *line, Tokens *tokens);
 bool file_extension_is_jack(char *file_path);
 int is_directory(char *path);
 void get_dir_path(char *source_path, char *dir_path);
@@ -129,24 +130,53 @@ void compile_file(char *file_path)
 {
     printf("Compiling %s\n", file_path);
 
-    FILE *file = fopen(file_path, "rb");
-    if (file == NULL)
-        return;
-
-    char dest_file_path[MAXLINE];
+    Tokens *tokens;
+    // Tokenize
     {
+        int line_num = 0;
+        char line[MAXLINE];
+        char filename[MAXLINE];
+
+        get_name_from_path(file_path, filename);
+
+        FILE *file = fopen(file_path, "rb");
+        if (file == NULL)
+            return;
+
+        while (fgets(line, MAXLINE, file))
+        {
+            line_num++;
+
+            result = parse_line(line, tokens);
+            if (result.code == PARSE_BLANK)
+                continue;
+            if (result.code == PARSE_ERROR)
+            {
+                printf("Syntax error at line %d in file %s: \n%s\n",
+                        line_num, filename, line);
+                printf("%s\n", result.message);
+                exit(1);
+            }
+        }
+
+        fclose(file);
+    }
+
+    // Write file
+    {
+        char dest_file_path[MAXLINE];
         // path/to/file.jack -> path/to/file.vm
         strcpy(dest_file_path, file_path);
         char *extension = strrchr(dest_file_path, '.');
         strcpy(extension, ".vm");
+        FILE *dest_file = fopen(dest_file_path, "wb");
+
+        // TODO: write XML
+        fputs("Aha!", dest_file);
+
+        printf("File %s written.\n", dest_file_path);
+        fclose(dest_file);
     }
-
-    FILE *dest_file = fopen(dest_file_path, "wb");
-    fputs("Aha!", dest_file);
-    printf("File %s written.\n", dest_file_path);
-    fclose(dest_file);
-
-    fclose(file);
 }
 
 
@@ -195,3 +225,16 @@ void clean_line(char *line)
 }
 
 
+parse_result parse_line(char *line, Tokens *tokens)
+{
+    parse_result result = {};
+
+    clean_line(line);
+
+    if (strlen(line) == 0)
+        return result;  // PARSE_BLANK
+
+
+
+    return result;
+}
