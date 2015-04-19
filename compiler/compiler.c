@@ -307,6 +307,7 @@ Parse_result parse_line(char *line, Tokens *tokens)
     {
         Token *token = new_token(tokens);
         char c = *cursor;
+        char *write_cursor = &token->repr[0];
 
         if (isblank(c))
         {
@@ -315,8 +316,8 @@ Parse_result parse_line(char *line, Tokens *tokens)
         else if (char_in_array(c, SYMBOLS, COUNT_OF(SYMBOLS)) >= 0)
         {
             token->type = SYMBOL;
-            token->repr[0] = c;
-            token->repr[1] = '\0';  // '{' -> "{"
+            *write_cursor++ = c;
+            *write_cursor = '\0';  // '{' -> "{"
             continue;
         }
         else if (isdigit(c))
@@ -324,10 +325,10 @@ Parse_result parse_line(char *line, Tokens *tokens)
             token->type = INT_CONST;
             while ((c = *cursor) != '\0' && isdigit(c))
             {
-                *token->repr++ = c;
+                *write_cursor++ = c;
                 cursor++;
             }
-            *token->repr = '\0';
+            *write_cursor = '\0';
             continue;
         }
         else if (c == '"')
@@ -338,15 +339,30 @@ Parse_result parse_line(char *line, Tokens *tokens)
                 if (c == '\0')
                 {
                     result.code = PARSE_ERROR;
-
+                    strcpy(result.message, "Unmatched double quote");
+                    return result;
                 }
-                *token->repr++ = c;
+                *write_cursor++ = c;
                 cursor++;
             }
-            *token->repr = '\0';
+            *write_cursor = '\0';
+            continue;
         }
+        else
+        {
+            // It is either a keyword or an identifier
+            while ((c = *cursor) != '\0' && (isalnum(c) || c == '_'))
+            {
+                *write_cursor++ = c;
+                cursor++;
+            }
+            *write_cursor = '\0';
 
-        cursor++;
+            if (string_in_array(token->repr, KEYWORDS, COUNT_OF(KEYWORDS)))
+                token->type = KEYWORD;
+            else
+                token->type = IDENTIFIER;
+        }
     }
 
     return result;
