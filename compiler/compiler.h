@@ -9,21 +9,10 @@
 typedef struct
 {
     enum {
-        PARSE_BLANK,  // required to be first
-        PARSE_ERROR,
-        PARSE_SUCCESS
-    } code;
-    char message[200];
-    Command *command;
-} Parse_result;
-
-
-typedef struct
-{
-    enum {
-        KEYWORD, SYMBOL, IDENTIFIER, INT_CONST, STRING_CONST
+        ILLEGAL, KEYWORD, SYMBOL,
+        IDENTIFIER, INT_CONST, STRING_CONST
     } type;
-    char value[MAXLINE];
+    char repr[MAXLINE];
 } Token;
 
 
@@ -34,6 +23,17 @@ typedef struct
     int allocated;
     Token *entries;
 } Tokens;
+
+
+typedef struct
+{
+    enum {
+        PARSE_BLANK,  // required to be first
+        PARSE_ERROR,
+        PARSE_SUCCESS
+    } code;
+    char message[200];
+} Parse_result;
 
 
 #endif  // COMPILER_H

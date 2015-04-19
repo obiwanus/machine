@@ -4,12 +4,13 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <stdbool.h>
+#include <ctype.h>
 
 #include "compiler.h"
 
 
 void compile_file(char *filename);
-parse_result parse_line(char *line, Tokens *tokens);
+Parse_result parse_line(char *line, Tokens *tokens);
 bool file_extension_is_jack(char *file_path);
 int is_directory(char *path);
 void get_dir_path(char *source_path, char *dir_path);
@@ -143,6 +144,8 @@ void compile_file(char *file_path)
         if (file == NULL)
             return;
 
+        Parse_result result;
+
         while (fgets(line, MAXLINE, file))
         {
             line_num++;
@@ -225,16 +228,126 @@ void clean_line(char *line)
 }
 
 
-parse_result parse_line(char *line, Tokens *tokens)
+int string_in_array(char *string, char *array[], int len)
 {
-    parse_result result = {};
+    // Returns the index of the first occurrence
+    // of 'string' in the array or -1
+
+    for (int i = 0; i < len; i++)
+    {
+        if (strcmp(array[i], string) == 0)
+            return i;
+    }
+    return -1;
+}
+
+
+int char_in_array(char c, char array[], int len)
+{
+    // Returns the index of the first occurrence
+    // of the char in the array or -1
+
+    for (int i = 0; i < len; i++)
+    {
+        if (c == array[i])
+            return i;
+    }
+    return -1;
+}
+
+
+Token *new_token(Tokens *list)
+{
+    // Returns a pointer to the next free slot
+    // for a parsed command. Allocates space.
+
+    Token *result = 0;
+
+    if (list->entries == 0)
+    {
+        list->allocated = 1000;
+        list->entries = malloc(list->allocated * sizeof(Token));
+    }
+    if (list->len >= (list->allocated - 2))
+    {
+        list->allocated = list->allocated * 2;
+        list->entries = realloc(list->entries,
+                                    list->allocated * sizeof(Token));
+    }
+    result = list->entries + list->len;
+    list->len++;
+
+    return result;
+}
+
+
+Parse_result parse_line(char *line, Tokens *tokens)
+{
+    Parse_result result = {};
 
     clean_line(line);
 
     if (strlen(line) == 0)
         return result;  // PARSE_BLANK
 
+    char *KEYWORDS[] = {
+        "class", "constructor", "function", "method",
+        "field", "static", "var", "int", "char", "boolean",
+        "void", "true", "false", "null", "this", "let",
+        "do", "if", "else", "while", "return"
+    };
 
+    char SYMBOLS[] = {
+        '{', '}', '(', ')', '[', ']', '.', ',', ';', '+',
+        '-', '*', '/', '&', '|', '<', '>', '=', '~'
+    };
+
+    char *cursor = line;
+    while (*cursor != '\0')
+    {
+        Token *token = new_token(tokens);
+        char c = *cursor;
+
+        if (isblank(c))
+        {
+            continue;  // Ignore whitespace
+        }
+        else if (char_in_array(c, SYMBOLS, COUNT_OF(SYMBOLS)) >= 0)
+        {
+            token->type = SYMBOL;
+            token->repr[0] = c;
+            token->repr[1] = '\0';  // '{' -> "{"
+            continue;
+        }
+        else if (isdigit(c))
+        {
+            token->type = INT_CONST;
+            while ((c = *cursor) != '\0' && isdigit(c))
+            {
+                *token->repr++ = c;
+                cursor++;
+            }
+            *token->repr = '\0';
+            continue;
+        }
+        else if (c == '"')
+        {
+            token->type = STRING_CONST;
+            while ((c = *(cursor + 1)) != '"')
+            {
+                if (c == '\0')
+                {
+                    result.code = PARSE_ERROR;
+
+                }
+                *token->repr++ = c;
+                cursor++;
+            }
+            *token->repr = '\0';
+        }
+
+        cursor++;
+    }
 
     return result;
 }
