@@ -10,7 +10,7 @@
 
 
 void compile_file(char *filename);
-Parse_result parse_line(char *line, Tokens *tokens);
+Parse_result parse_line(char *line, Tokens *tokens, bool *multi_line_comment_mode);
 bool file_extension_is_jack(char *file_path);
 int is_directory(char *path);
 void get_dir_path(char *source_path, char *dir_path);
@@ -131,7 +131,7 @@ void compile_file(char *file_path)
 {
     printf("Compiling %s\n", file_path);
 
-    Tokens *tokens;
+    Tokens tokens = {};
     // Tokenize
     {
         int line_num = 0;
@@ -145,12 +145,13 @@ void compile_file(char *file_path)
             return;
 
         Parse_result result;
+        bool multi_line_comment_mode = false;
 
         while (fgets(line, MAXLINE, file))
         {
             line_num++;
 
-            result = parse_line(line, tokens);
+            result = parse_line(line, &tokens, &multi_line_comment_mode);
             if (result.code == PARSE_BLANK)
                 continue;
             if (result.code == PARSE_ERROR)
@@ -183,9 +184,9 @@ void compile_file(char *file_path)
 }
 
 
-void clean_line(char *line)
+void clean_line(char *line, bool *multi_line_comment_mode)
 {
-    // Deletes multiple spaces and trims
+    // Deletes multiple spaces, comments, and trims
     // whitespace on both sides
 
     char *cln = line, *beginning = line;
@@ -194,7 +195,28 @@ void clean_line(char *line)
 
     while (*line != 0)
     {
-        if (*line == ' ' && (!non_space_num || space_num > 1))
+        if (*multi_line_comment_mode)
+        {
+            if (*line == '*' && *(line + 1) == '/')
+            {
+                *multi_line_comment_mode = false;
+                line = line + 2;
+            }
+            else
+            {
+                line++;
+            }
+            continue;
+        }
+
+        if (*line == '/' && *(line + 1) == '*')
+        {
+            *multi_line_comment_mode = true;
+            line = line + 2;
+            continue;
+        }
+
+        if (isblank(*line) && (!non_space_num || space_num > 1))
         {
             line++;
             space_num++;
@@ -208,7 +230,7 @@ void clean_line(char *line)
         {
             break;  // line ends
         }
-        if (*line == ' ')
+        if (isblank(*line))
         {
             space_num++;
         }
@@ -281,11 +303,11 @@ Token *new_token(Tokens *list)
 }
 
 
-Parse_result parse_line(char *line, Tokens *tokens)
+Parse_result parse_line(char *line, Tokens *tokens, bool *multi_line_comment_mode)
 {
     Parse_result result = {};
 
-    clean_line(line);
+    clean_line(line, multi_line_comment_mode);
 
     if (strlen(line) == 0)
         return result;  // PARSE_BLANK
@@ -311,6 +333,7 @@ Parse_result parse_line(char *line, Tokens *tokens)
 
         if (isblank(c))
         {
+            cursor++;
             continue;  // Ignore whitespace
         }
         else if (char_in_array(c, SYMBOLS, COUNT_OF(SYMBOLS)) >= 0)
@@ -318,6 +341,7 @@ Parse_result parse_line(char *line, Tokens *tokens)
             token->type = SYMBOL;
             *write_cursor++ = c;
             *write_cursor = '\0';  // '{' -> "{"
+            cursor++;
             continue;
         }
         else if (isdigit(c))
@@ -346,22 +370,29 @@ Parse_result parse_line(char *line, Tokens *tokens)
                 cursor++;
             }
             *write_cursor = '\0';
+            cursor += 2;  // Skip the next double quote
             continue;
         }
-        else
+        else if (isalnum(c) || c == '_')
         {
             // It is either a keyword or an identifier
-            while ((c = *cursor) != '\0' && (isalnum(c) || c == '_'))
+            while ((c = *cursor) != '\0' && ((isalnum(c) || c == '_')))
             {
                 *write_cursor++ = c;
                 cursor++;
             }
             *write_cursor = '\0';
 
-            if (string_in_array(token->repr, KEYWORDS, COUNT_OF(KEYWORDS)))
+            if (string_in_array(token->repr, KEYWORDS, COUNT_OF(KEYWORDS)) > 0)
                 token->type = KEYWORD;
             else
                 token->type = IDENTIFIER;
+        }
+        else
+        {
+            result.code = PARSE_ERROR;
+            sprintf(result.message, "Illegal token: %c\n", c);
+            return result;
         }
     }
 
