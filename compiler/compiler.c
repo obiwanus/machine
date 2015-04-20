@@ -344,16 +344,18 @@ Parse_result parse_line(char *line, Tokens *tokens, bool *multi_line_comment_mod
     char *cursor = line;
     while (*cursor != '\0')
     {
-        Token *token = new_token(tokens);
         char c = *cursor;
-        char *write_cursor = &token->repr[0];
 
         if (isblank(c))
         {
             cursor++;
             continue;  // Ignore whitespace
         }
-        else if (char_in_array(c, SYMBOLS, COUNT_OF(SYMBOLS)) >= 0)
+
+        Token *token = new_token(tokens);
+        char *write_cursor = &token->repr[0];
+
+        if (char_in_array(c, SYMBOLS, COUNT_OF(SYMBOLS)) >= 0)
         {
             token->type = SYMBOL;
             *write_cursor++ = c;
