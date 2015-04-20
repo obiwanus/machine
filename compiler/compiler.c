@@ -175,11 +175,28 @@ void compile_file(char *file_path)
         strcpy(extension, ".vm");
         FILE *dest_file = fopen(dest_file_path, "wb");
 
-        // TODO: write XML
-        fputs("Aha!", dest_file);
+        // Write XML
+        Token *token;
+        char type_str[30];
+        for (int i = 0; i < tokens.len; i++)
+        {
+            token = &tokens.entries[i];
+            if (token->type == KEYWORD)
+                strcpy(type_str, "keyword");
+            else if (token->type == SYMBOL)
+                strcpy(type_str, "symbol");
+            else if (token->type == IDENTIFIER)
+                strcpy(type_str, "identifier");
+            else if (token->type == INT_CONST)
+                strcpy(type_str, "intConst");
+            else if (token->type == STRING_CONST)
+                strcpy(type_str, "stringConst");
 
-        printf("File %s written.\n", dest_file_path);
+            fprintf(dest_file, "<%s> %s </%s>\n", type_str, token->repr, type_str);
+        }
+
         fclose(dest_file);
+        printf("File %s written.\n", dest_file_path);
     }
 }
 
