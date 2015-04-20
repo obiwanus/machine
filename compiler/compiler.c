@@ -178,6 +178,7 @@ void compile_file(char *file_path)
         // Write XML
         Token *token;
         char type_str[30];
+        fprintf(dest_file, "<tokens>\n");
         for (int i = 0; i < tokens.len; i++)
         {
             token = &tokens.entries[i];
@@ -188,12 +189,13 @@ void compile_file(char *file_path)
             else if (token->type == IDENTIFIER)
                 strcpy(type_str, "identifier");
             else if (token->type == INT_CONST)
-                strcpy(type_str, "intConst");
+                strcpy(type_str, "integerConstant");
             else if (token->type == STRING_CONST)
-                strcpy(type_str, "stringConst");
+                strcpy(type_str, "stringConstant");
 
             fprintf(dest_file, "<%s> %s </%s>\n", type_str, token->repr, type_str);
         }
+        fprintf(dest_file, "</tokens>\n");
 
         fclose(dest_file);
         printf("File %s written.\n", dest_file_path);
@@ -402,7 +404,7 @@ Parse_result parse_line(char *line, Tokens *tokens, bool *multi_line_comment_mod
             }
             *write_cursor = '\0';
 
-            if (string_in_array(token->repr, KEYWORDS, COUNT_OF(KEYWORDS)) > 0)
+            if (string_in_array(token->repr, KEYWORDS, COUNT_OF(KEYWORDS)) >= 0)
                 token->type = KEYWORD;
             else
                 token->type = IDENTIFIER;
