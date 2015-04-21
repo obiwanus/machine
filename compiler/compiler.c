@@ -348,68 +348,148 @@ Parse_result parse_line(char *line, Tokens *tokens, char *filename, int line_num
 
 Token *get_next_token(Tokens *tokens)
 {
-    Token *result = tokens->current;
-    tokens->current++;
+    Token *result = tokens->next;
+    tokens->next++;
     return result;
 }
 
 
-void expect(Tokens *tokens, token_type type, char *repr, char *expected_type)
+Token *expect(Tokens *tokens, bool mandatory, token_type type, char *repr, char *expected_type)
 {
     Token *token = get_next_token(tokens);
     if (token->type != type || (repr != 0 && strcmp(token->repr, repr) != 0))
     {
-        printf("%s:%d: error: %s expected, got '%s'\n",
-               token->filename, token->line_num,
-               expected_type, token->repr);
+        if (mandatory)
+        {
+            printf("%s:%d: error: %s expected, got '%s'\n",
+                   token->filename, token->line_num,
+                   expected_type, token->repr);
+            exit(1);
+        }
+        return 0;
+    }
+    return token;
+}
+
+
+Token *expect_keyword(Tokens *tokens, char *repr, bool mandatory)
+{
+    return expect(tokens, mandatory, KEYWORD, repr, repr);
+}
+
+Token *expect_symbol(Tokens *tokens, char *repr, bool mandatory)
+{
+    return expect(tokens, mandatory, SYMBOL, repr, repr);
+}
+
+Token *expect_identifier(Tokens *tokens, bool mandatory)
+{
+    return expect(tokens, mandatory, IDENTIFIER, 0, "identifier");
+}
+
+Token *expect_integer(Tokens *tokens, bool mandatory)
+{
+    return expect(tokens, mandatory, INT_CONST, 0, "integer");
+}
+
+Token *expect_string(Tokens *tokens, bool mandatory)
+{
+    return expect(tokens, mandatory, STRING_CONST, 0, "string");
+}
+
+
+void print_token(Token *token)
+{
+    char type_str[MAXLINE];
+
+    if (token->type == KEYWORD)
+        strcpy(type_str, "keyword");
+    else if (token->type == SYMBOL)
+        strcpy(type_str, "symbol");
+    else if (token->type == IDENTIFIER)
+        strcpy(type_str, "identifier");
+    else if (token->type == INT_CONST)
+        strcpy(type_str, "integerConstant");
+    else if (token->type == STRING_CONST)
+        strcpy(type_str, "stringConstant");
+
+    printf("<%s>%s</%s>\n", type_str, token->repr, type_str);
+}
+
+
+// Match prototypes
+void match_class_var_dec(Tokens *tokens);
+void match_class_subroutine_dec(Tokens *tokens);
+
+
+void match_class(Tokens *tokens)
+{
+    printf("<class>\n");
+
+    Token *token = get_next_token(tokens);
+    if (token->type != KEYWORD || strcmp(token->repr, "class") != 0)
+    {
+        printf("class expected\n");
         exit(1);
     }
+    print_token(token);
+
+    token = get_next_token(tokens);
+    if (token->type != IDENTIFIER)
+    {
+        printf("class name expected\n");
+        exit(1);
+    }
+    print_token(token);
+
+    token = get_next_token(tokens);
+    if (token->type != SYMBOL || strcmp(token->repr, "{") != 0)
+    {
+        printf("{ expected\n");
+        exit(1);
+    }
+    print_token(token);
+
+    if (strcmp(tokens->next->repr, "static") == 0 ||
+        strcmp(tokens->next->repr, "field") == 0)
+    {
+        get_next_token(tokens);
+        match_class_var_dec(tokens);
+    }
+    if (strcmp(tokens->next->repr, "constructor") == 0 ||
+        strcmp(tokens->next->repr, "function") == 0 ||
+        strcmp(tokens->next->repr, "method") == 0)
+    {
+        get_next_token(tokens);
+        match_class_subroutine_dec(tokens);
+    }
+
+    token = get_next_token(tokens);
+    if (token->type != SYMBOL || strcmp(token->repr, "}") != 0)
+    {
+        printf("} expected\n");
+        exit(1);
+    }
+    print_token(token);
+
+    printf("</class>\n");
 }
 
 
-void expect_keyword(Tokens *tokens, char *repr)
+void match_class_var_dec(Tokens *tokens)
 {
-    expect(tokens, KEYWORD, repr, repr);
-}
+    printf("<classVarDec>\n");
+    Token *token = get_next_token(tokens);
+    printf("</classVarDec>\n");
 
-void expect_symbol(Tokens *tokens, char *repr)
-{
-    expect(tokens, SYMBOL, repr, repr);
-}
-
-void expect_identifier(Tokens *tokens)
-{
-    expect(tokens, IDENTIFIER, 0, "identifier");
-}
-
-void expect_integer(Tokens *tokens)
-{
-    expect(tokens, INT_CONST, 0, "integer");
-}
-
-void expect_string(Tokens *tokens)
-{
-    expect(tokens, STRING_CONST, 0, "string");
 }
 
 
-// Match function prototypes
-void match_class_name(Tokens *tokens, Node *node);
-
-
-void match_class(Tokens *tokens, Node *node)
+void match_class_subroutine_dec(Tokens *tokens)
 {
-    expect_keyword(tokens, "class");
-    match_class_name(tokens, node);
-    expect_symbol(tokens, "{");
-
-    expect_symbol(tokens, "}");
-}
-
-
-void match_class_name(Tokens *tokens, Node *node)
-{
-    expect_identifier(tokens);
+    printf("<subroutineDec>\n");
+    Token *token = get_next_token(tokens);
+    printf("</subroutineDec>\n");
 }
 
 
@@ -486,9 +566,8 @@ void compile_file(char *file_path)
     }
 
     // Parse syntax
-    Node root_node = {};
-    tokens.current = tokens.entries;  // This is the root node, start from the first
-    match_class(&tokens, &root_node);
+    tokens.next = tokens.entries;  // This is the root node, start from the first
+    match_class(&tokens);
 }
 
 

@@ -39,7 +39,7 @@ typedef struct
     int len;
     int allocated;
     Token *entries;
-    Token *current;
+    Token *next;
 } Tokens;
 
 
@@ -52,6 +52,7 @@ struct Node
         DO_STATEMENT, RETURN_STATEMENT, EXPRESSION, TERM, SUBROUTINE_CALL,
         EXPRESSION_LIST, OP, UNARY_OP, KEYWORD_CONSTANT
     } type;
+    char name[MAXLINE];
     int child_count;
     struct Node **children;
 };
