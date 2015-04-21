@@ -244,7 +244,8 @@ Token *new_token(Tokens *list)
 }
 
 
-Parse_result parse_line(char *line, Tokens *tokens, bool *multi_line_comment_mode)
+Parse_result parse_line(char *line, Tokens *tokens, char *filename, int line_num,
+                        bool *multi_line_comment_mode)
 {
     Parse_result result = {};
 
@@ -277,6 +278,8 @@ Parse_result parse_line(char *line, Tokens *tokens, bool *multi_line_comment_mod
         }
 
         Token *token = new_token(tokens);
+        token->filename = filename;
+        token->line_num = line_num;
         char *write_cursor = &token->repr[0];
 
         if (char_in_array(c, SYMBOLS, COUNT_OF(SYMBOLS)) >= 0)
@@ -343,10 +346,75 @@ Parse_result parse_line(char *line, Tokens *tokens, bool *multi_line_comment_mod
 }
 
 
+Token *get_next_token(Tokens *tokens)
+{
+    Token *result = tokens->current;
+    tokens->current++;
+    return result;
+}
+
+
+void expect(Tokens *tokens, token_type type, char *repr, char *expected_type)
+{
+    Token *token = get_next_token(tokens);
+    if (token->type != type || (repr != 0 && strcmp(token->repr, repr) != 0))
+    {
+        printf("%s:%d: error: %s expected, got '%s'\n",
+               token->filename, token->line_num,
+               expected_type, token->repr);
+        exit(1);
+    }
+}
+
+
+void expect_keyword(Tokens *tokens, char *repr)
+{
+    expect(tokens, KEYWORD, repr, repr);
+}
+
+void expect_symbol(Tokens *tokens, char *repr)
+{
+    expect(tokens, SYMBOL, repr, repr);
+}
+
+void expect_identifier(Tokens *tokens)
+{
+    expect(tokens, IDENTIFIER, 0, "identifier");
+}
+
+void expect_integer(Tokens *tokens)
+{
+    expect(tokens, INT_CONST, 0, "integer");
+}
+
+void expect_string(Tokens *tokens)
+{
+    expect(tokens, STRING_CONST, 0, "string");
+}
+
+
+// Match function prototypes
+void match_class_name(Tokens *tokens, Node *node);
+
+
+void match_class(Tokens *tokens, Node *node)
+{
+    expect_keyword(tokens, "class");
+    match_class_name(tokens, node);
+    expect_symbol(tokens, "{");
+
+    expect_symbol(tokens, "}");
+}
+
+
+void match_class_name(Tokens *tokens, Node *node)
+{
+    expect_identifier(tokens);
+}
+
+
 void compile_file(char *file_path)
 {
-    printf("Compiling %s\n", file_path);
-
     Tokens tokens = {};
     // Tokenize
     {
@@ -367,13 +435,13 @@ void compile_file(char *file_path)
         {
             line_num++;
 
-            result = parse_line(line, &tokens, &multi_line_comment_mode);
+            result = parse_line(line, &tokens, file_path, line_num, &multi_line_comment_mode);
             if (result.code == PARSE_BLANK)
                 continue;
             if (result.code == PARSE_ERROR)
             {
                 printf("Syntax error at line %d in file %s: \n%s\n",
-                        line_num, filename, line);
+                        line_num, file_path, line);
                 printf("%s\n", result.message);
                 exit(1);
             }
@@ -418,8 +486,9 @@ void compile_file(char *file_path)
     }
 
     // Parse syntax
-    // Parse_tree parse_tree = {};
-    // match_class(&tokens, &parse_tree);
+    Node root_node = {};
+    tokens.current = tokens.entries;  // This is the root node, start from the first
+    match_class(&tokens, &root_node);
 }
 
 
