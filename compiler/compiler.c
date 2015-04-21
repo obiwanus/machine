@@ -10,11 +10,9 @@
 
 
 void compile_file(char *filename);
-Parse_result parse_line(char *line, Tokens *tokens, bool *multi_line_comment_mode);
 bool file_extension_is_jack(char *file_path);
 int is_directory(char *path);
 void get_dir_path(char *source_path, char *dir_path);
-void get_name_from_path(char *source_path, char *name);
 
 
 int main(int argc, char *argv[])
@@ -124,82 +122,6 @@ int is_directory(char *path)
     }
 
     return S_ISDIR(info.st_mode);
-}
-
-
-void compile_file(char *file_path)
-{
-    printf("Compiling %s\n", file_path);
-
-    Tokens tokens = {};
-    // Tokenize
-    {
-        int line_num = 0;
-        char line[MAXLINE];
-        char filename[MAXLINE];
-
-        get_name_from_path(file_path, filename);
-
-        FILE *file = fopen(file_path, "rb");
-        if (file == NULL)
-            return;
-
-        Parse_result result;
-        bool multi_line_comment_mode = false;
-
-        while (fgets(line, MAXLINE, file))
-        {
-            line_num++;
-
-            result = parse_line(line, &tokens, &multi_line_comment_mode);
-            if (result.code == PARSE_BLANK)
-                continue;
-            if (result.code == PARSE_ERROR)
-            {
-                printf("Syntax error at line %d in file %s: \n%s\n",
-                        line_num, filename, line);
-                printf("%s\n", result.message);
-                exit(1);
-            }
-        }
-
-        fclose(file);
-    }
-
-    // Write file
-    {
-        char dest_file_path[MAXLINE];
-        // path/to/file.jack -> path/to/file.vm
-        strcpy(dest_file_path, file_path);
-        char *extension = strrchr(dest_file_path, '.');
-        strcpy(extension, ".vm");
-        FILE *dest_file = fopen(dest_file_path, "wb");
-
-        // Write XML
-        Token *token;
-        char type_str[30];
-        fprintf(dest_file, "<tokens>\n");
-        for (int i = 0; i < tokens.len; i++)
-        {
-            token = &tokens.entries[i];
-            if (token->type == KEYWORD)
-                strcpy(type_str, "keyword");
-            else if (token->type == SYMBOL)
-                strcpy(type_str, "symbol");
-            else if (token->type == IDENTIFIER)
-                strcpy(type_str, "identifier");
-            else if (token->type == INT_CONST)
-                strcpy(type_str, "integerConstant");
-            else if (token->type == STRING_CONST)
-                strcpy(type_str, "stringConstant");
-
-            fprintf(dest_file, "<%s> %s </%s>\n", type_str, token->repr, type_str);
-        }
-        fprintf(dest_file, "</tokens>\n");
-
-        fclose(dest_file);
-        printf("File %s written.\n", dest_file_path);
-    }
 }
 
 
@@ -419,3 +341,85 @@ Parse_result parse_line(char *line, Tokens *tokens, bool *multi_line_comment_mod
 
     return result;
 }
+
+
+void compile_file(char *file_path)
+{
+    printf("Compiling %s\n", file_path);
+
+    Tokens tokens = {};
+    // Tokenize
+    {
+        int line_num = 0;
+        char line[MAXLINE];
+        char filename[MAXLINE];
+
+        get_name_from_path(file_path, filename);
+
+        FILE *file = fopen(file_path, "rb");
+        if (file == NULL)
+            return;
+
+        Parse_result result;
+        bool multi_line_comment_mode = false;
+
+        while (fgets(line, MAXLINE, file))
+        {
+            line_num++;
+
+            result = parse_line(line, &tokens, &multi_line_comment_mode);
+            if (result.code == PARSE_BLANK)
+                continue;
+            if (result.code == PARSE_ERROR)
+            {
+                printf("Syntax error at line %d in file %s: \n%s\n",
+                        line_num, filename, line);
+                printf("%s\n", result.message);
+                exit(1);
+            }
+        }
+
+        fclose(file);
+    }
+
+    // Write file
+    {
+        // char dest_file_path[MAXLINE];
+        // // path/to/file.jack -> path/to/file.vm
+        // strcpy(dest_file_path, file_path);
+        // char *extension = strrchr(dest_file_path, '.');
+        // strcpy(extension, ".vm");
+        // FILE *dest_file = fopen(dest_file_path, "wb");
+
+        // // Write XML
+        // Token *token;
+        // char type_str[30];
+        // fprintf(dest_file, "<tokens>\n");
+        // for (int i = 0; i < tokens.len; i++)
+        // {
+        //     token = &tokens.entries[i];
+        //     if (token->type == KEYWORD)
+        //         strcpy(type_str, "keyword");
+        //     else if (token->type == SYMBOL)
+        //         strcpy(type_str, "symbol");
+        //     else if (token->type == IDENTIFIER)
+        //         strcpy(type_str, "identifier");
+        //     else if (token->type == INT_CONST)
+        //         strcpy(type_str, "integerConstant");
+        //     else if (token->type == STRING_CONST)
+        //         strcpy(type_str, "stringConstant");
+
+        //     fprintf(dest_file, "<%s> %s </%s>\n", type_str, token->repr, type_str);
+        // }
+        // fprintf(dest_file, "</tokens>\n");
+
+        // fclose(dest_file);
+        // printf("File %s written.\n", dest_file_path);
+    }
+
+    // Parse syntax
+    // Parse_tree parse_tree = {};
+    // match_class(&tokens, &parse_tree);
+}
+
+
