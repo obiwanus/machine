@@ -389,7 +389,7 @@ void syntax_error(Token *token, char *expected)
 }
 
 
-Token *expect(bool mandatory, token_type type, char *repr, char *expected)
+Token *expect(bool mandatory, token_type type, char *repr, char *expected, bool print)
 {
     Token *token = get_next_token();
     if (token->type != type || (repr != 0 && strcmp(token->repr, repr) != 0))
@@ -409,7 +409,11 @@ Token *expect(bool mandatory, token_type type, char *repr, char *expected)
             return 0;
         }
     }
-    print_token(token);
+    if (print)
+    {
+        print_token(token);
+    }
+
     return token;
 }
 
@@ -417,53 +421,63 @@ Token *expect(bool mandatory, token_type type, char *repr, char *expected)
 // Match helpers
 Token *expect_keyword(char *repr)
 {
-    return expect(true, KEYWORD, repr, repr);
+    return expect(true, KEYWORD, repr, repr, true);
 }
 
 Token *expect_symbol(char *repr)
 {
-    return expect(true, SYMBOL, repr, repr);
+    return expect(true, SYMBOL, repr, repr, true);
 }
 
 Token *expect_identifier()
 {
-    return expect(true, IDENTIFIER, 0, "identifier");
+    return expect(true, IDENTIFIER, 0, "identifier", true);
 }
 
 Token *expect_integer()
 {
-    return expect(true, INT_CONST, 0, "integer");
+    return expect(true, INT_CONST, 0, "integer", true);
 }
 
 Token *expect_string()
 {
-    return expect(true, STRING_CONST, 0, "string");
+    return expect(true, STRING_CONST, 0, "string", true);
 }
 
 
 Token *try_keyword(char *repr)
 {
-    return expect(false, KEYWORD, repr, repr);
+    return expect(false, KEYWORD, repr, repr, true);
 }
 
 Token *try_symbol(char *repr)
 {
-    return expect(false, SYMBOL, repr, repr);
+    return expect(false, SYMBOL, repr, repr, true);
 }
 
 Token *try_identifier()
 {
-    return expect(false, IDENTIFIER, 0, "identifier");
+    return expect(false, IDENTIFIER, 0, "identifier", true);
 }
 
 Token *try_integer()
 {
-    return expect(false, INT_CONST, 0, "integer");
+    return expect(false, INT_CONST, 0, "integer", true);
 }
 
 Token *try_string()
 {
-    return expect(false, STRING_CONST, 0, "string");
+    return expect(false, STRING_CONST, 0, "string", true);
+}
+
+bool peek_keyword(char *repr)
+{
+    if (expect(false, KEYWORD, repr, repr, false))
+    {
+        step_back();
+        return true;
+    }
+    return false;
 }
 
 
@@ -531,18 +545,63 @@ void match_parameter_list()
 }
 
 
+void match_statements()
+{
+    printf("<statements>\n");
+
+
+
+    printf("</statements>\n");
+}
+
+
+void match_var_dec()
+{
+    printf("<varDec>\n");
+
+    expect_keyword("var");
+    expect_type();
+    expect_identifier();
+    while (try_symbol(","))
+    {
+        expect_identifier();
+    }
+    expect_symbol(";");
+
+    printf("</varDec>\n");
+}
+
+
+void match_subroutine_body()
+{
+    printf("<subroutineBody>\n");
+
+    expect_symbol("{");
+    while (peek_keyword("var"))
+        match_var_dec();
+    match_statements();
+    expect_symbol("}");
+
+    printf("</subroutineBody>\n");
+}
+
+
 void match_subroutine_dec()
 {
     printf("<subroutineDec>\n");
 
+    try_keyword("constructor") || try_keyword("function") || expect_keyword("method");
     try_keyword("void") || expect_type();
     expect_identifier();
     expect_symbol("(");
     match_parameter_list();
     expect_symbol(")");
+    match_subroutine_body();
 
     printf("</subroutineDec>\n");
 }
+
+// TODO: statements
 
 
 void match_class()
@@ -553,15 +612,14 @@ void match_class()
     expect_identifier();
     expect_symbol("{");
 
-    while (try_keyword("static") ||
-           try_keyword("field"))
+    while (peek_keyword("static") ||
+           peek_keyword("field"))
     {
-        step_back();
         match_class_var_dec();
     }
-    while (try_keyword("constructor") ||
-           try_keyword("function") ||
-           try_keyword("method"))
+    while (peek_keyword("constructor") ||
+           peek_keyword("function") ||
+           peek_keyword("method"))
     {
         match_subroutine_dec();
     }
