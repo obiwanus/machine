@@ -496,20 +496,48 @@ void match_class_var_dec(Tokens *tokens)
 {
     printf("<classVarDec>\n");
 
+    try_keyword(tokens, "field") || expect_keyword(tokens, "static");
+    expect_type(tokens);
+    expect_identifier(tokens);
+    while (try_symbol(tokens, ","))
+    {
+        expect_identifier(tokens);
+    }
+    expect_symbol(tokens, ";");
+
     printf("</classVarDec>\n");
 }
+
+
+void match_parameter_list(Tokens *tokens)
+{
+    printf("<parameterList>\n");
+
+    if (match_type(tokens))
+    {
+        expect_identifier(tokens);
+
+        while (try_symbol(tokens, ","))
+        {
+            expect_type(tokens);
+            expect_identifier(tokens);
+        }
+    }
+
+    printf("</parameterList>\n");
+}
+
+// TODO: maybe static vars?
 
 
 void match_class_subroutine_dec(Tokens *tokens)
 {
     printf("<subroutineDec>\n");
 
-    Token *token;
-
     try_keyword(tokens, "void") || expect_type(tokens);
     expect_identifier(tokens);
     expect_symbol(tokens, "(");
-//    match_parameter_list();
+    match_parameter_list(tokens);
     expect_symbol(tokens, ")");
 
     printf("</subroutineDec>\n");
@@ -524,12 +552,13 @@ void match_class(Tokens *tokens)
     expect_identifier(tokens);
     expect_symbol(tokens, "{");
 
-    if (try_keyword(tokens, "static") ||
-        try_keyword(tokens, "field"))
+    while (try_keyword(tokens, "static") ||
+           try_keyword(tokens, "field"))
     {
+        step_back(tokens);
         match_class_var_dec(tokens);
     }
-    if (try_keyword(tokens, "constructor") ||
+    while (try_keyword(tokens, "constructor") ||
         try_keyword(tokens, "function") ||
         try_keyword(tokens, "method"))
     {

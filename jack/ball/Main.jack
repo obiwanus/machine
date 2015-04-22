@@ -1,7 +1,11 @@
 
 class Main
 {
-    function void main()
+    field int vasia;
+    static boolean petya, serezha;
+    field Vasia vas;
+
+    function void main(int a, boolean b)
     {
         var boolean finish;
         var int x;
