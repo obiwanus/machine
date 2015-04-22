@@ -367,16 +367,13 @@ void print_token(Token *token)
 
 Token *get_next_token(Tokens *tokens)
 {
-    Token *result = tokens->next;
-    tokens->next++;
-    return result;
+    return tokens->next++;
 }
 
 
 Token *step_back(Tokens *tokens)
 {
-    tokens->next--;
-    return tokens->next;
+    return --tokens->next;
 }
 
 
