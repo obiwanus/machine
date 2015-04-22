@@ -15,6 +15,9 @@ int is_directory(char *path);
 void get_dir_path(char *source_path, char *dir_path);
 
 
+static Tokens *tokens;
+
+
 int main(int argc, char *argv[])
 {
     if (argc < 2)
@@ -219,32 +222,32 @@ int char_in_array(char c, char array[], int len)
 }
 
 
-Token *new_token(Tokens *list)
+Token *new_token()
 {
     // Returns a pointer to the next free slot
     // for a parsed command. Allocates space.
 
     Token *result = 0;
 
-    if (list->entries == 0)
+    if (tokens->entries == 0)
     {
-        list->allocated = 1000;
-        list->entries = malloc(list->allocated * sizeof(Token));
+        tokens->allocated = 1000;
+        tokens->entries = malloc(tokens->allocated * sizeof(Token));
     }
-    if (list->len >= (list->allocated - 2))
+    if (tokens->len >= (tokens->allocated - 2))
     {
-        list->allocated = list->allocated * 2;
-        list->entries = realloc(list->entries,
-                                    list->allocated * sizeof(Token));
+        tokens->allocated = tokens->allocated * 2;
+        tokens->entries = realloc(tokens->entries,
+                                    tokens->allocated * sizeof(Token));
     }
-    result = list->entries + list->len;
-    list->len++;
+    result = tokens->entries + tokens->len;
+    tokens->len++;
 
     return result;
 }
 
 
-Parse_result parse_line(char *line, Tokens *tokens, char *filename, int line_num,
+Parse_result parse_line(char *line, char *filename, int line_num,
                         bool *multi_line_comment_mode)
 {
     Parse_result result = {};
@@ -277,7 +280,7 @@ Parse_result parse_line(char *line, Tokens *tokens, char *filename, int line_num
             continue;  // Ignore whitespace
         }
 
-        Token *token = new_token(tokens);
+        Token *token = new_token();
         token->filename = filename;
         token->line_num = line_num;
         char *write_cursor = &token->repr[0];
@@ -365,13 +368,13 @@ void print_token(Token *token)
 }
 
 
-Token *get_next_token(Tokens *tokens)
+Token *get_next_token()
 {
     return tokens->next++;
 }
 
 
-Token *step_back(Tokens *tokens)
+Token *step_back()
 {
     return --tokens->next;
 }
@@ -386,9 +389,9 @@ void syntax_error(Token *token, char *expected)
 }
 
 
-Token *expect(Tokens *tokens, bool mandatory, token_type type, char *repr, char *expected)
+Token *expect(bool mandatory, token_type type, char *repr, char *expected)
 {
-    Token *token = get_next_token(tokens);
+    Token *token = get_next_token();
     if (token->type != type || (repr != 0 && strcmp(token->repr, repr) != 0))
     {
         if (mandatory)
@@ -402,7 +405,7 @@ Token *expect(Tokens *tokens, bool mandatory, token_type type, char *repr, char 
         }
         else
         {
-            step_back(tokens);
+            step_back();
             return 0;
         }
     }
@@ -412,160 +415,158 @@ Token *expect(Tokens *tokens, bool mandatory, token_type type, char *repr, char 
 
 
 // Match helpers
-Token *expect_keyword(Tokens *tokens, char *repr)
+Token *expect_keyword(char *repr)
 {
-    return expect(tokens, true, KEYWORD, repr, repr);
+    return expect(true, KEYWORD, repr, repr);
 }
 
-Token *expect_symbol(Tokens *tokens, char *repr)
+Token *expect_symbol(char *repr)
 {
-    return expect(tokens, true, SYMBOL, repr, repr);
+    return expect(true, SYMBOL, repr, repr);
 }
 
-Token *expect_identifier(Tokens *tokens)
+Token *expect_identifier()
 {
-    return expect(tokens, true, IDENTIFIER, 0, "identifier");
+    return expect(true, IDENTIFIER, 0, "identifier");
 }
 
-Token *expect_integer(Tokens *tokens)
+Token *expect_integer()
 {
-    return expect(tokens, true, INT_CONST, 0, "integer");
+    return expect(true, INT_CONST, 0, "integer");
 }
 
-Token *expect_string(Tokens *tokens)
+Token *expect_string()
 {
-    return expect(tokens, true, STRING_CONST, 0, "string");
-}
-
-
-Token *try_keyword(Tokens *tokens, char *repr)
-{
-    return expect(tokens, false, KEYWORD, repr, repr);
-}
-
-Token *try_symbol(Tokens *tokens, char *repr)
-{
-    return expect(tokens, false, SYMBOL, repr, repr);
-}
-
-Token *try_identifier(Tokens *tokens)
-{
-    return expect(tokens, false, IDENTIFIER, 0, "identifier");
-}
-
-Token *try_integer(Tokens *tokens)
-{
-    return expect(tokens, false, INT_CONST, 0, "integer");
-}
-
-Token *try_string(Tokens *tokens)
-{
-    return expect(tokens, false, STRING_CONST, 0, "string");
+    return expect(true, STRING_CONST, 0, "string");
 }
 
 
-Token *match_type(Tokens *tokens)
+Token *try_keyword(char *repr)
+{
+    return expect(false, KEYWORD, repr, repr);
+}
+
+Token *try_symbol(char *repr)
+{
+    return expect(false, SYMBOL, repr, repr);
+}
+
+Token *try_identifier()
+{
+    return expect(false, IDENTIFIER, 0, "identifier");
+}
+
+Token *try_integer()
+{
+    return expect(false, INT_CONST, 0, "integer");
+}
+
+Token *try_string()
+{
+    return expect(false, STRING_CONST, 0, "string");
+}
+
+
+Token *match_type()
 {
     Token *token;
 
-    if ((token = try_keyword(tokens, "int")) ||
-        (token = try_keyword(tokens, "char")) ||
-        (token = try_keyword(tokens, "boolean")) ||
-        (token = try_identifier(tokens)))
+    if ((token = try_keyword("int")) ||
+        (token = try_keyword("char")) ||
+        (token = try_keyword("boolean")) ||
+        (token = try_identifier()))
     {
         return token;
     }
 
-    step_back(tokens);
+    step_back();
     return 0;
 }
 
 
-Token *expect_type(Tokens *tokens)
+Token *expect_type()
 {
-    Token *token = match_type(tokens);
+    Token *token = match_type();
     if (token == 0)
     {
-        syntax_error(get_next_token(tokens), "type");
+        syntax_error(get_next_token(), "type");
     }
     return token;
 }
 
 
-void match_class_var_dec(Tokens *tokens)
+void match_class_var_dec()
 {
     printf("<classVarDec>\n");
 
-    try_keyword(tokens, "field") || expect_keyword(tokens, "static");
-    expect_type(tokens);
-    expect_identifier(tokens);
-    while (try_symbol(tokens, ","))
+    try_keyword("field") || expect_keyword("static");
+    expect_type();
+    expect_identifier();
+    while (try_symbol(","))
     {
-        expect_identifier(tokens);
+        expect_identifier();
     }
-    expect_symbol(tokens, ";");
+    expect_symbol(";");
 
     printf("</classVarDec>\n");
 }
 
 
-void match_parameter_list(Tokens *tokens)
+void match_parameter_list()
 {
     printf("<parameterList>\n");
 
-    if (match_type(tokens))
+    if (match_type())
     {
-        expect_identifier(tokens);
+        expect_identifier();
 
-        while (try_symbol(tokens, ","))
+        while (try_symbol(","))
         {
-            expect_type(tokens);
-            expect_identifier(tokens);
+            expect_type();
+            expect_identifier();
         }
     }
 
     printf("</parameterList>\n");
 }
 
-// TODO: maybe static vars?
 
-
-void match_class_subroutine_dec(Tokens *tokens)
+void match_subroutine_dec()
 {
     printf("<subroutineDec>\n");
 
-    try_keyword(tokens, "void") || expect_type(tokens);
-    expect_identifier(tokens);
-    expect_symbol(tokens, "(");
-    match_parameter_list(tokens);
-    expect_symbol(tokens, ")");
+    try_keyword("void") || expect_type();
+    expect_identifier();
+    expect_symbol("(");
+    match_parameter_list();
+    expect_symbol(")");
 
     printf("</subroutineDec>\n");
 }
 
 
-void match_class(Tokens *tokens)
+void match_class()
 {
     printf("<class>\n");
 
-    expect_keyword(tokens, "class");
-    expect_identifier(tokens);
-    expect_symbol(tokens, "{");
+    expect_keyword("class");
+    expect_identifier();
+    expect_symbol("{");
 
-    while (try_keyword(tokens, "static") ||
-           try_keyword(tokens, "field"))
+    while (try_keyword("static") ||
+           try_keyword("field"))
     {
-        step_back(tokens);
-        match_class_var_dec(tokens);
+        step_back();
+        match_class_var_dec();
     }
-    while (try_keyword(tokens, "constructor") ||
-        try_keyword(tokens, "function") ||
-        try_keyword(tokens, "method"))
+    while (try_keyword("constructor") ||
+           try_keyword("function") ||
+           try_keyword("method"))
     {
-        match_class_subroutine_dec(tokens);
+        match_subroutine_dec();
     }
 
-    expect_symbol(tokens, "}");
+    expect_symbol("}");
 
     printf("</class>\n");
 }
@@ -573,7 +574,9 @@ void match_class(Tokens *tokens)
 
 void compile_file(char *file_path)
 {
-    Tokens tokens = {};
+    // Allocate memory for tokens
+    tokens = malloc(sizeof(Tokens));
+
     // Tokenize
     {
         int line_num = 0;
@@ -593,7 +596,7 @@ void compile_file(char *file_path)
         {
             line_num++;
 
-            result = parse_line(line, &tokens, file_path, line_num, &multi_line_comment_mode);
+            result = parse_line(line, file_path, line_num, &multi_line_comment_mode);
             if (result.code == PARSE_BLANK)
                 continue;
             if (result.code == PARSE_ERROR)
@@ -608,44 +611,11 @@ void compile_file(char *file_path)
         fclose(file);
     }
 
-    // Write file
-    {
-        // char dest_file_path[MAXLINE];
-        // // path/to/file.jack -> path/to/file.vm
-        // strcpy(dest_file_path, file_path);
-        // char *extension = strrchr(dest_file_path, '.');
-        // strcpy(extension, ".vm");
-        // FILE *dest_file = fopen(dest_file_path, "wb");
-
-        // // Write XML
-        // Token *token;
-        // char type_str[30];
-        // fprintf(dest_file, "<tokens>\n");
-        // for (int i = 0; i < tokens.len; i++)
-        // {
-        //     token = &tokens.entries[i];
-        //     if (token->type == KEYWORD)
-        //         strcpy(type_str, "keyword");
-        //     else if (token->type == SYMBOL)
-        //         strcpy(type_str, "symbol");
-        //     else if (token->type == IDENTIFIER)
-        //         strcpy(type_str, "identifier");
-        //     else if (token->type == INT_CONST)
-        //         strcpy(type_str, "integerConstant");
-        //     else if (token->type == STRING_CONST)
-        //         strcpy(type_str, "stringConstant");
-
-        //     fprintf(dest_file, "<%s> %s </%s>\n", type_str, token->repr, type_str);
-        // }
-        // fprintf(dest_file, "</tokens>\n");
-
-        // fclose(dest_file);
-        // printf("File %s written.\n", dest_file_path);
-    }
-
     // Parse syntax
-    tokens.next = tokens.entries;  // This is the root node, start from the first
-    match_class(&tokens);
+    tokens->next = tokens->entries;  // This is the root node, start from the first
+    match_class();
+
+    free(tokens);
 }
 
 
