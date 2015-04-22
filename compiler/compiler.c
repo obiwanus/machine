@@ -575,7 +575,7 @@ void match_class()
 void compile_file(char *file_path)
 {
     // Allocate memory for tokens
-    tokens = malloc(sizeof(Tokens));
+    tokens = calloc(1, sizeof(Tokens));
 
     // Tokenize
     {
