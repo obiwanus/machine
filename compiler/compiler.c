@@ -480,6 +480,19 @@ bool peek_keyword(char *repr)
     return false;
 }
 
+bool peek_identifier()
+{
+    if (expect(false, IDENTIFIER, 0, "identifier", false))
+    {
+        step_back();
+        return true;
+    }
+    return false;
+}
+
+
+void match_statements();
+
 
 Token *match_type()
 {
@@ -545,11 +558,219 @@ void match_parameter_list()
 }
 
 
+bool match_op()
+{
+    return (
+        try_symbol("+") ||\
+        try_symbol("-") ||\
+        try_symbol("*") ||\
+        try_symbol("/") ||\
+        try_symbol("&") ||\
+        try_symbol("|") ||\
+        try_symbol("<") ||\
+        try_symbol(">") ||\
+        try_symbol("=")
+    );
+}
+
+
+bool match_unary_op()
+{
+    return try_symbol("-") || try_symbol("~");
+}
+
+
+bool match_keyword_constant()
+{
+    return (try_keyword("true") || try_keyword("false") ||\
+            try_keyword("null") || try_keyword("this"));
+}
+
+
+void expect_term();
+bool match_expression();
+
+
+bool match_term()
+{
+    // TODO:
+    if (try_integer() || try_string() || match_keyword_constant())
+    {
+        return true;
+    }
+    if (try_symbol("("))
+    {
+        match_expression();
+        expect_symbol(")");
+        return true;
+    }
+    if (peek_identifier())
+    {
+        get_next_token();
+        return true;
+    }
+    if (match_unary_op())
+    {
+        expect_term();
+        return true;
+    }
+    return false;
+}
+
+void expect_term()
+{
+    if (!match_term())
+    {
+        syntax_error(get_next_token(), "type");
+    }
+}
+
+
+bool match_expression()
+{
+
+    return false;
+}
+
+
+void expect_expression()
+{
+    printf("<expression>\n");
+
+    // TODO:
+
+    printf("</expression>\n");
+}
+
+
+void match_expression_list()
+{
+    if (match_expression())
+    {
+        while (try_symbol(","))
+        {
+            expect_expression();
+        }
+    }
+}
+
+
+void match_subroutine_call()
+{
+    printf("<subroutineCall>\n");
+
+    expect_identifier();
+    if (try_keyword("."))
+    {
+        expect_identifier();
+    }
+    expect_symbol("(");
+    match_expression_list();
+    expect_symbol(")");
+
+    printf("</subroutineCall>\n");
+}
+
+
+void match_let()
+{
+    printf("<let>\n");
+
+    expect_keyword("let");
+    expect_identifier();
+    if (try_symbol("["))
+    {
+        expect_expression();
+        expect_symbol("]");
+    }
+    expect_symbol("=");
+    expect_expression();
+    expect_symbol(";");
+
+    printf("</let>\n");
+}
+
+
+void match_if()
+{
+    printf("<if>\n");
+
+    expect_keyword("if");
+    expect_symbol("(");
+    expect_expression();
+    expect_symbol(")");
+    expect_symbol("{");
+    match_statements();
+    expect_symbol("}");
+    if (try_keyword("else"))
+    {
+        expect_symbol("{");
+        match_statements();
+        expect_symbol("}");
+    }
+
+    printf("</if>\n");
+}
+
+
+void match_while()
+{
+    printf("<while>\n");
+
+    expect_keyword("while");
+    expect_symbol("(");
+    expect_expression();
+    expect_symbol(")");
+    expect_symbol("{");
+    match_statements();
+    expect_symbol("}");
+    printf("</while>\n");
+}
+
+
+void match_do()
+{
+    printf("<do>\n");
+
+    expect_keyword("do");
+    match_subroutine_call();
+    expect_symbol(";");
+    printf("</do>\n");
+}
+
+
+void match_return()
+{
+    printf("<return>\n");
+
+    expect_keyword("return");
+    match_expression();
+    expect_symbol(";");
+
+    printf("</return>\n");
+}
+
+
 void match_statements()
 {
     printf("<statements>\n");
 
-
+    bool none_matched = false;
+    while (!none_matched)
+    {
+        if (peek_keyword("let"))
+            match_let();
+        else if (peek_keyword("if"))
+            match_if();
+        else if (peek_keyword("while"))
+            match_while();
+        else if (peek_keyword("do"))
+            match_do();
+        else if (peek_keyword("return"))
+            match_return();
+        else
+            none_matched = true;
+    }
 
     printf("</statements>\n");
 }
@@ -600,8 +821,6 @@ void match_subroutine_dec()
 
     printf("</subroutineDec>\n");
 }
-
-// TODO: statements
 
 
 void match_class()
