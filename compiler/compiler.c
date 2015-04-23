@@ -480,6 +480,16 @@ bool peek_keyword(char *repr)
     return false;
 }
 
+bool peek_symbol(char *repr)
+{
+    if (expect(false, SYMBOL, repr, repr, false))
+    {
+        step_back();
+        return true;
+    }
+    return false;
+}
+
 bool peek_identifier()
 {
     if (expect(false, IDENTIFIER, 0, "identifier", false))
@@ -589,11 +599,11 @@ bool match_keyword_constant()
 
 void expect_term();
 bool match_expression();
+void match_subroutine_call();
 
 
 bool match_term()
 {
-    // TODO:
     if (try_integer() || try_string() || match_keyword_constant())
     {
         return true;
@@ -607,6 +617,27 @@ bool match_term()
     if (peek_identifier())
     {
         get_next_token();
+        if (peek_symbol("["))
+        {
+            // varName '[' expression ']'
+            step_back();
+            expect_identifier();
+            expect_symbol("[");
+            match_expression();
+            expect_symbol("]");
+            return true;
+        }
+        else if (peek_symbol("("))
+        {
+            step_back();  // before the identifier
+            match_subroutine_call();  // TODO: mandatory?
+            return true;
+        }
+
+        // varName
+        step_back();
+        expect_identifier();
+
         return true;
     }
     if (match_unary_op())
@@ -628,18 +659,24 @@ void expect_term()
 
 bool match_expression()
 {
-
+    if (match_term())
+    {
+        while (match_op())
+        {
+            expect_term();
+        }
+        return true;
+    }
     return false;
 }
 
 
 void expect_expression()
 {
-    printf("<expression>\n");
-
-    // TODO:
-
-    printf("</expression>\n");
+    if (!match_expression())
+    {
+        syntax_error(get_next_token(), "type");
+    }
 }
 
 
