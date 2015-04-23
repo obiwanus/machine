@@ -351,7 +351,7 @@ Parse_result parse_line(char *line, char *filename, int line_num,
 
 void print_token(Token *token)
 {
-    char type_str[MAXLINE];
+    char type_str[MAXLINE], token_str[MAXLINE];
 
     if (token->type == KEYWORD)
         strcpy(type_str, "keyword");
@@ -364,7 +364,21 @@ void print_token(Token *token)
     else if (token->type == STRING_CONST)
         strcpy(type_str, "stringConstant");
 
-    printf("<%s>%s</%s>\n", type_str, token->repr, type_str);
+    strcpy(token_str, token->repr);
+    if (strcmp(token_str, "<") == 0)
+    {
+        strcpy(token_str, "&lt;");
+    }
+    else if (strcmp(token_str, ">") == 0)
+    {
+        strcpy(token_str, "&gt;");
+    }
+    else if (strcmp(token_str, "&") == 0)
+    {
+        strcpy(token_str, "&amp;");
+    }
+
+    printf("<%s>%s</%s>\n", type_str, token_str, type_str);
 }
 
 
@@ -516,7 +530,6 @@ Token *match_type()
         return token;
     }
 
-    step_back();
     return 0;
 }
 
@@ -570,23 +583,30 @@ void match_parameter_list()
 
 bool match_op()
 {
-    return (
-        try_symbol("+") ||\
-        try_symbol("-") ||\
-        try_symbol("*") ||\
-        try_symbol("/") ||\
-        try_symbol("&") ||\
-        try_symbol("|") ||\
-        try_symbol("<") ||\
-        try_symbol(">") ||\
+    printf("<op>\n");
+    bool match = (
+        try_symbol("+") ||
+        try_symbol("-") ||
+        try_symbol("*") ||
+        try_symbol("/") ||
+        try_symbol("&") ||
+        try_symbol("|") ||
+        try_symbol("<") ||
+        try_symbol(">") ||
         try_symbol("=")
     );
+    printf("</op>\n");
+
+    return match;
 }
 
 
 bool match_unary_op()
 {
-    return try_symbol("-") || try_symbol("~");
+    printf("<unaryOp>\n");
+    bool match = try_symbol("-") || try_symbol("~");
+    printf("</unaryOp>\n");
+    return match;
 }
 
 
@@ -604,18 +624,23 @@ void match_subroutine_call();
 
 bool match_term()
 {
+    printf("<term>\n");
+    bool match = false;
+
     if (try_integer() || try_string() || match_keyword_constant())
     {
-        return true;
+        match = true;
     }
-    if (try_symbol("("))
+    else if (try_symbol("("))
     {
         match_expression();
         expect_symbol(")");
-        return true;
+        match = true;
     }
-    if (peek_identifier())
+    else if (peek_identifier())
     {
+        match = true;
+
         get_next_token();
         if (peek_symbol("["))
         {
@@ -625,27 +650,27 @@ bool match_term()
             expect_symbol("[");
             match_expression();
             expect_symbol("]");
-            return true;
         }
-        else if (peek_symbol("("))
+        else if (peek_symbol("(") || peek_symbol("."))
         {
             step_back();  // before the identifier
             match_subroutine_call();  // TODO: mandatory?
-            return true;
         }
-
-        // varName
-        step_back();
-        expect_identifier();
-
-        return true;
+        else
+        {
+            // varName
+            step_back();
+            expect_identifier();
+        }
     }
-    if (match_unary_op())
+    else if (match_unary_op())
     {
         expect_term();
-        return true;
+        match = true;
     }
-    return false;
+
+    printf("</term>\n");
+    return match;
 }
 
 void expect_term()
@@ -659,15 +684,19 @@ void expect_term()
 
 bool match_expression()
 {
+    printf("<expression>\n");
+    bool match = false;
     if (match_term())
     {
         while (match_op())
         {
             expect_term();
         }
-        return true;
+        match = true;
     }
-    return false;
+
+    printf("</expression>\n");
+    return match;
 }
 
 
@@ -675,7 +704,7 @@ void expect_expression()
 {
     if (!match_expression())
     {
-        syntax_error(get_next_token(), "type");
+        syntax_error(get_next_token(), "expression");
     }
 }
 
