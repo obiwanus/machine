@@ -697,7 +697,7 @@ void match_subroutine_call()
     printf("<subroutineCall>\n");
 
     expect_identifier();
-    if (try_keyword("."))
+    if (try_symbol("."))
     {
         expect_identifier();
     }
