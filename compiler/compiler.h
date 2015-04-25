@@ -61,7 +61,5 @@ typedef struct
     Symbol_Table_Entry *entries;
 } Symbol_Table;
 
-// TODO: write an allocator
-
 
 #endif  // COMPILER_H

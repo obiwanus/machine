@@ -403,6 +403,32 @@ void syntax_error(Token *token, char *expected)
 }
 
 
+Symbol_Table_Entry *new_entry(Symbol_Table *table)
+{
+
+    // Returns a pointer to the next free entry.
+    // Allocates space
+
+    Symbol_Table_Entry *result = 0;
+
+    if (table->entries == 0)
+    {
+        table->allocated = 1000;
+        table->entries = malloc(table->allocated * sizeof(Symbol_Table_Entry));
+    }
+    if (table->len >= (table->allocated - 2))
+    {
+        table->allocated = table->allocated * 2;
+        table->entries = realloc(table->entries,
+                                    table->allocated * sizeof(Symbol_Table_Entry));
+    }
+    result = table->entries + table->len;
+    table->len++;
+
+    return result;
+}
+
+
 void new_function_scope()
 {
     // TODO: clear the function table
