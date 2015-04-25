@@ -403,6 +403,18 @@ void syntax_error(Token *token, char *expected)
 }
 
 
+void declare_class_var(char *name, char *type, char *kind)
+{
+
+}
+
+
+void declare_function_var(char *name, char *type, char *kind)
+{
+
+}
+
+
 Token *expect(bool mandatory, token_type type, char *repr, char *expected, bool print)
 {
     Token *token = get_next_token();
@@ -557,14 +569,19 @@ Token *expect_type()
 void match_class_var_dec()
 {
     printf("<classVarDec>\n");
-    char var_type[10];
-    sprintf(var_type, "%s_var", tokens->next->repr);
-    try_keyword("field") || expect_keyword("static");
-    expect_type();
-    expect_identifier(var_type, "declared");
+    Token *token, *type, *kind;
+    kind = try_keyword("field");
+    if (!kind)
+        kind = expect_keyword("static");
+    type = expect_type();
+
+    token = expect_identifier(kind->repr, "declared");
+    declare_class_var(token->repr, type->repr, kind->repr);
+
     while (try_symbol(","))
     {
-        expect_identifier(var_type, "declared");
+        token = expect_identifier(kind->repr, "declared");
+        declare_class_var(token->repr, type->repr, kind->repr);
     }
     expect_symbol(";");
 
@@ -576,14 +593,19 @@ void match_parameter_list()
 {
     printf("<parameterList>\n");
 
-    if (match_type())
+    Token *token, *type;
+
+    type = match_type();
+    if (type)
     {
-        expect_identifier("argument", "declared");
+        token = expect_identifier("argument", "declared");
+        declare_function_var(token->repr, type->repr, "argument");
 
         while (try_symbol(","))
         {
-            expect_type();
-            expect_identifier("argument", "declared");
+            type = expect_type();
+            token = expect_identifier("argument", "declared");
+            declare_function_var(token->repr, type->repr, "argument");
         }
     }
 
@@ -865,12 +887,17 @@ void match_var_dec()
 {
     printf("<varDec>\n");
 
+    Token *token, *type;
+
     expect_keyword("var");
-    expect_type();
-    expect_identifier("var_name", "declared");
+    type = expect_type();
+    token = expect_identifier("var_name", "declared");
+    declare_function_var(token->repr, type->repr, "var");
+
     while (try_symbol(","))
     {
-        expect_identifier("var_name", "declared");
+        token = expect_identifier("var_name", "declared");
+        declare_function_var(token->repr, type->repr, "var");
     }
     expect_symbol(";");
 
@@ -914,6 +941,7 @@ void match_class()
 
     expect_keyword("class");
     expect_identifier("class_name", "declared");
+    // TODO: define class
     expect_symbol("{");
 
     while (peek_keyword("static") ||

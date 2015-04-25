@@ -43,21 +43,7 @@ typedef struct
 } Tokens;
 
 
-struct Node
-{
-    enum {
-        CLASS, CLASS_VAR_DEC, TYPE, SUBROUTINE_DEC, PARAMETER_LIST,
-        SUBROUTINE_BODY, VAR_DEC, CLASS_NAME, SUBROUTINE_NAME, VAR_NAME,
-        STATEMENTS, STATEMENT, LET_STATEMENT, IF_STATEMENT, WHILE_STATEMENT,
-        DO_STATEMENT, RETURN_STATEMENT, EXPRESSION, TERM, SUBROUTINE_CALL,
-        EXPRESSION_LIST, OP, UNARY_OP, KEYWORD_CONSTANT
-    } type;
-    char name[MAXLINE];
-    int child_count;
-    struct Node **children;
-};
 
-typedef struct Node Node;
 
 
 #endif  // COMPILER_H
