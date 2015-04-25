@@ -403,15 +403,21 @@ void syntax_error(Token *token, char *expected)
 }
 
 
+void new_function_scope()
+{
+    // TODO: clear the function table
+}
+
+
 void declare_class_var(char *name, char *type, char *kind)
 {
-
+    // TODO
 }
 
 
 void declare_function_var(char *name, char *type, char *kind)
 {
-
+    // TODO
 }
 
 
@@ -922,6 +928,8 @@ void match_subroutine_body()
 void match_subroutine_dec()
 {
     printf("<subroutineDec>\n");
+
+    new_function_scope();
 
     try_keyword("constructor") || try_keyword("function") || expect_keyword("method");
     try_keyword("void") || expect_type();

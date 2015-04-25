@@ -43,7 +43,25 @@ typedef struct
 } Tokens;
 
 
+typedef struct
+{
+    enum {SCOPE_CLASS, SCOPE_FUNCTION} scope;
+    enum {STATIC, FIELD, ARG, VAR} kind;
+    char name[MAXLINE];
+    char type[MAXLINE];
+    int num;
+} Symbol_Table_Entry;
 
+
+typedef struct
+{
+    // Required to be cleared to zero
+    int len;
+    int allocated;
+    Symbol_Table_Entry *entries;
+} Symbol_Table;
+
+// TODO: write an allocator
 
 
 #endif  // COMPILER_H
