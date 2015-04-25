@@ -735,11 +735,20 @@ void match_subroutine_call()
 {
     printf("<subroutineCall>\n");
 
-    expect_identifier("class_or_subroutine_name", "used");
-    if (try_symbol("."))
+    get_next_token();  // Should be an identifier
+    if (peek_symbol("."))
     {
+        step_back();
+        expect_identifier("class_name", "used");
+        expect_symbol(".");
         expect_identifier("subroutine_name", "used");
     }
+    else
+    {
+        step_back();
+        expect_identifier("subroutine_name", "used");
+    }
+
     expect_symbol("(");
     match_expression_list();
     expect_symbol(")");
