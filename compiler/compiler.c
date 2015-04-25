@@ -438,9 +438,10 @@ Symbol_Table *new_scope()
 }
 
 
-void declare_var(Symbol_Table *scope, char *name, char *type, char *kind)
+Symbol_Table_Entry *declare_var(Symbol_Table *scope, char *name, char *type, char *kind)
 {
     Symbol_Table_Entry *entry = new_entry(scope);
+
     strcpy(entry->name, name);
     strcpy(entry->type, type);
     if (strcmp(kind, "static") == 0)
@@ -456,6 +457,29 @@ void declare_var(Symbol_Table *scope, char *name, char *type, char *kind)
         printf("Unknown variable kind: %s\n", kind);
         exit(1);
     }
+    int num = 0;
+    for (int i = 0; i < scope->len - 1; i++)  // don't look at itself
+    {
+        if (scope->entries[i].kind == entry->kind)
+            num++;
+    }
+    entry->num = num;
+
+    return entry;
+}
+
+
+Symbol_Table_Entry *find_var(char *name)
+{
+    Symbol_Table_Entry *result = 0;
+
+    return result;
+}
+
+
+void print_var(Symbol_Table_Entry *entry)
+{
+
 }
 
 
@@ -500,15 +524,9 @@ Token *try_symbol(char *repr)
     return expect(false, SYMBOL, repr, repr, true);
 }
 
-Token *try_identifier(char *category, char *state)
+Token *try_identifier()
 {
-    Token *result = expect(false, IDENTIFIER, 0, "identifier", false);
-    if (result)
-    {
-        printf("<identifier category='%s' state='%s'>%s</identifier>",
-               category, state, result->repr);
-    }
-    return result;
+    return expect(false, IDENTIFIER, 0, "identifier", false);
 }
 
 Token *try_integer()
@@ -531,9 +549,9 @@ Token *expect_symbol(char *repr)
     return expect(true, SYMBOL, repr, repr, true);
 }
 
-Token *expect_identifier(char *category, char *state)
+Token *expect_identifier()
 {
-    Token *result = try_identifier(category, state);
+    Token *result = try_identifier();
     if (result == 0)
         syntax_error(get_next_token(), "identifier");
     return result;
@@ -590,7 +608,7 @@ Token *match_type()
     if ((token = try_keyword("int")) ||
         (token = try_keyword("char")) ||
         (token = try_keyword("boolean")) ||
-        (token = try_identifier("class_name", "used")))
+        (token = try_identifier()))  // class name, used
     {
         return token;
     }
@@ -614,18 +632,22 @@ void match_class_var_dec()
 {
     printf("<classVarDec>\n");
     Token *token, *type, *kind;
+    Symbol_Table_Entry *var;
+
     kind = try_keyword("field");
     if (!kind)
         kind = expect_keyword("static");
     type = expect_type();
 
-    token = expect_identifier(kind->repr, "declared");
-    declare_var(class_scope, token->repr, type->repr, kind->repr);
+    token = expect_identifier();
+    var = declare_var(class_scope, token->repr, type->repr, kind->repr);
+    print_var(var);
 
     while (try_symbol(","))
     {
-        token = expect_identifier(kind->repr, "declared");
-        declare_var(class_scope, token->repr, type->repr, kind->repr);
+        token = expect_identifier();
+        var = declare_var(class_scope, token->repr, type->repr, kind->repr);
+        print_var(var);
     }
     expect_symbol(";");
 
@@ -638,18 +660,21 @@ void match_parameter_list()
     printf("<parameterList>\n");
 
     Token *token, *type;
+    Symbol_Table_Entry *var;
 
     type = match_type();
     if (type)
     {
-        token = expect_identifier("argument", "declared");
-        declare_var(function_scope, token->repr, type->repr, "argument");
+        token = expect_identifier();
+        var = declare_var(function_scope, token->repr, type->repr, "argument");
+        print_var(var);
 
         while (try_symbol(","))
         {
             type = expect_type();
-            token = expect_identifier("argument", "declared");
-            declare_var(function_scope, token->repr, type->repr, "argument");
+            token = expect_identifier();
+            var = declare_var(function_scope, token->repr, type->repr, "argument");
+            print_var(var);
         }
     }
 
@@ -717,12 +742,17 @@ bool match_term()
     {
         match = true;
 
+        Token *token;
+        Symbol_Table_Entry *var;
+
         get_next_token();
         if (peek_symbol("["))
         {
             // varName '[' expression ']'
             step_back();
-            expect_identifier("unknown_var", "used");  // TODO
+            token = expect_identifier();
+            var = find_var(token->repr);
+            print_var(var);
             expect_symbol("[");
             match_expression();
             expect_symbol("]");
@@ -730,13 +760,15 @@ bool match_term()
         else if (peek_symbol("(") || peek_symbol("."))
         {
             step_back();  // before the identifier
-            match_subroutine_call();  // TODO: mandatory?
+            match_subroutine_call();
         }
         else
         {
             // varName
             step_back();
-            expect_identifier("unknown_var", "used");  // TODO
+            token = expect_identifier();
+            var = find_var(token->repr);
+            print_var(var);
         }
     }
     else if (match_unary_op())
@@ -801,18 +833,28 @@ void match_subroutine_call()
 {
     printf("<subroutineCall>\n");
 
+    Token *token;
+    Symbol_Table_Entry *var;
+
     get_next_token();  // Should be an identifier
     if (peek_symbol("."))
     {
         step_back();
-        expect_identifier("class_name", "used");
+        token = expect_identifier();  // class name
+        var = find_var(token->repr);
+        print_var(var);
+
         expect_symbol(".");
-        expect_identifier("subroutine_name", "used");
+        token = expect_identifier();
+        var = find_var(token->repr);
+        print_var(var);
     }
     else
     {
         step_back();
-        expect_identifier("subroutine_name", "used");
+        token = expect_identifier();
+        var = find_var(token->repr);
+        print_var(var);
     }
 
     expect_symbol("(");
@@ -827,8 +869,14 @@ void match_let()
 {
     printf("<let>\n");
 
+    Token *token;
+    Symbol_Table_Entry *var;
+
     expect_keyword("let");
-    expect_identifier("var", "used");
+    token = expect_identifier();
+    var = find_var(token->repr);
+    print_var(var);
+
     if (try_symbol("["))
     {
         expect_expression();
@@ -932,16 +980,19 @@ void match_var_dec()
     printf("<varDec>\n");
 
     Token *token, *type;
+    Symbol_Table_Entry *var;
 
     expect_keyword("var");
     type = expect_type();
-    token = expect_identifier("var_name", "declared");
-    declare_var(function_scope, token->repr, type->repr, "var");
+    token = expect_identifier();
+    var = declare_var(function_scope, token->repr, type->repr, "var");
+    print_var(var);
 
     while (try_symbol(","))
     {
-        token = expect_identifier("var_name", "declared");
-        declare_var(function_scope, token->repr, type->repr, "var");
+        token = expect_identifier();
+        var = declare_var(function_scope, token->repr, type->repr, "var");
+        print_var(var);
     }
     expect_symbol(";");
 
@@ -976,7 +1027,7 @@ void match_subroutine_dec()
 
     try_keyword("constructor") || try_keyword("function") || expect_keyword("method");
     try_keyword("void") || expect_type();
-    expect_identifier("subroutine_name", "declared");
+    expect_identifier();  // function name, declared
     expect_symbol("(");
     match_parameter_list();
     expect_symbol(")");
@@ -993,7 +1044,7 @@ void expect_class()
     class_scope = new_scope();  // never freed
 
     expect_keyword("class");
-    expect_identifier("class_name", "declared");
+    expect_identifier();  // class name, declared
     // TODO: define class
     expect_symbol("{");
 
