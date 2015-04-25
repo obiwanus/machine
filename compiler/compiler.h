@@ -45,7 +45,6 @@ typedef struct
 
 typedef struct
 {
-    enum {SCOPE_CLASS, SCOPE_FUNCTION} scope;
     enum {STATIC, FIELD, ARG, VAR} kind;
     char name[MAXLINE];
     char type[MAXLINE];

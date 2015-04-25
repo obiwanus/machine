@@ -16,6 +16,8 @@ void get_dir_path(char *source_path, char *dir_path);
 
 
 static Tokens *tokens;
+static Symbol_Table *class_scope;
+static Symbol_Table *function_scope;
 
 
 int main(int argc, char *argv[])
@@ -420,7 +422,7 @@ Symbol_Table_Entry *new_entry(Symbol_Table *table)
     {
         table->allocated = table->allocated * 2;
         table->entries = realloc(table->entries,
-                                    table->allocated * sizeof(Symbol_Table_Entry));
+                                 table->allocated * sizeof(Symbol_Table_Entry));
     }
     result = table->entries + table->len;
     table->len++;
@@ -429,21 +431,31 @@ Symbol_Table_Entry *new_entry(Symbol_Table *table)
 }
 
 
-void new_function_scope()
+Symbol_Table *new_scope()
 {
-    // TODO: clear the function table
+    Symbol_Table *table = calloc(1, sizeof(Symbol_Table));
+    return table;
 }
 
 
-void declare_class_var(char *name, char *type, char *kind)
+void declare_var(Symbol_Table *scope, char *name, char *type, char *kind)
 {
-    // TODO
-}
-
-
-void declare_function_var(char *name, char *type, char *kind)
-{
-    // TODO
+    Symbol_Table_Entry *entry = new_entry(scope);
+    strcpy(entry->name, name);
+    strcpy(entry->type, type);
+    if (strcmp(kind, "static") == 0)
+        entry->kind = STATIC;
+    else if (strcmp(kind, "field") == 0)
+        entry->kind = FIELD;
+    else if (strcmp(kind, "argument") == 0)
+        entry->kind = ARG;
+    else if (strcmp(kind, "var") == 0)
+        entry->kind = VAR;
+    else
+    {
+        printf("Unknown variable kind: %s\n", kind);
+        exit(1);
+    }
 }
 
 
@@ -608,12 +620,12 @@ void match_class_var_dec()
     type = expect_type();
 
     token = expect_identifier(kind->repr, "declared");
-    declare_class_var(token->repr, type->repr, kind->repr);
+    declare_var(class_scope, token->repr, type->repr, kind->repr);
 
     while (try_symbol(","))
     {
         token = expect_identifier(kind->repr, "declared");
-        declare_class_var(token->repr, type->repr, kind->repr);
+        declare_var(class_scope, token->repr, type->repr, kind->repr);
     }
     expect_symbol(";");
 
@@ -631,13 +643,13 @@ void match_parameter_list()
     if (type)
     {
         token = expect_identifier("argument", "declared");
-        declare_function_var(token->repr, type->repr, "argument");
+        declare_var(function_scope, token->repr, type->repr, "argument");
 
         while (try_symbol(","))
         {
             type = expect_type();
             token = expect_identifier("argument", "declared");
-            declare_function_var(token->repr, type->repr, "argument");
+            declare_var(function_scope, token->repr, type->repr, "argument");
         }
     }
 
@@ -924,12 +936,12 @@ void match_var_dec()
     expect_keyword("var");
     type = expect_type();
     token = expect_identifier("var_name", "declared");
-    declare_function_var(token->repr, type->repr, "var");
+    declare_var(function_scope, token->repr, type->repr, "var");
 
     while (try_symbol(","))
     {
         token = expect_identifier("var_name", "declared");
-        declare_function_var(token->repr, type->repr, "var");
+        declare_var(function_scope, token->repr, type->repr, "var");
     }
     expect_symbol(";");
 
@@ -955,7 +967,12 @@ void match_subroutine_dec()
 {
     printf("<subroutineDec>\n");
 
-    new_function_scope();
+    if (function_scope)
+    {
+        free(function_scope->entries);
+        free(function_scope);
+    }
+    function_scope = new_scope();
 
     try_keyword("constructor") || try_keyword("function") || expect_keyword("method");
     try_keyword("void") || expect_type();
@@ -969,9 +986,11 @@ void match_subroutine_dec()
 }
 
 
-void match_class()
+void expect_class()
 {
     printf("<class>\n");
+
+    class_scope = new_scope();  // never freed
 
     expect_keyword("class");
     expect_identifier("class_name", "declared");
@@ -1037,7 +1056,7 @@ void compile_file(char *file_path)
 
     // Parse syntax
     tokens->next = tokens->entries;  // This is the root node, start from the first
-    match_class();
+    expect_class();
 
     free(tokens);
 }
