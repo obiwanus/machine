@@ -444,12 +444,13 @@ Token *try_symbol(char *repr)
     return expect(false, SYMBOL, repr, repr, true);
 }
 
-Token *try_identifier(char *category)
+Token *try_identifier(char *category, char *state)
 {
     Token *result = expect(false, IDENTIFIER, 0, "identifier", false);
     if (result)
     {
-        printf("<identifier category='%s'>%s</identifier>", category, result->repr);
+        printf("<identifier category='%s' state='%s'>%s</identifier>",
+               category, state, result->repr);
     }
     return result;
 }
@@ -474,9 +475,9 @@ Token *expect_symbol(char *repr)
     return expect(true, SYMBOL, repr, repr, true);
 }
 
-Token *expect_identifier(char *category)
+Token *expect_identifier(char *category, char *state)
 {
-    Token *result = try_identifier(category);
+    Token *result = try_identifier(category, state);
     if (result == 0)
         syntax_error(get_next_token(), "identifier");
     return result;
@@ -533,7 +534,7 @@ Token *match_type()
     if ((token = try_keyword("int")) ||
         (token = try_keyword("char")) ||
         (token = try_keyword("boolean")) ||
-        (token = try_identifier("class_name")))
+        (token = try_identifier("class_name", "used")))
     {
         return token;
     }
@@ -560,10 +561,10 @@ void match_class_var_dec()
     sprintf(var_type, "%s_var", tokens->next->repr);
     try_keyword("field") || expect_keyword("static");
     expect_type();
-    expect_identifier(var_type);
+    expect_identifier(var_type, "declared");
     while (try_symbol(","))
     {
-        expect_identifier(var_type);
+        expect_identifier(var_type, "declared");
     }
     expect_symbol(";");
 
@@ -577,12 +578,12 @@ void match_parameter_list()
 
     if (match_type())
     {
-        expect_identifier("argument");
+        expect_identifier("argument", "declared");
 
         while (try_symbol(","))
         {
             expect_type();
-            expect_identifier("argument");
+            expect_identifier("argument", "declared");
         }
     }
 
@@ -655,7 +656,7 @@ bool match_term()
         {
             // varName '[' expression ']'
             step_back();
-            expect_identifier("unknown_var");  // being used
+            expect_identifier("unknown_var", "used");  // TODO
             expect_symbol("[");
             match_expression();
             expect_symbol("]");
@@ -669,7 +670,7 @@ bool match_term()
         {
             // varName
             step_back();
-            expect_identifier("unknown_var");  // being used
+            expect_identifier("unknown_var", "used");  // TODO
         }
     }
     else if (match_unary_op())
@@ -734,10 +735,10 @@ void match_subroutine_call()
 {
     printf("<subroutineCall>\n");
 
-    expect_identifier("class_or_subroutine_name");
+    expect_identifier("class_or_subroutine_name", "used");
     if (try_symbol("."))
     {
-        expect_identifier("subroutine_name");
+        expect_identifier("subroutine_name", "used");
     }
     expect_symbol("(");
     match_expression_list();
@@ -752,7 +753,7 @@ void match_let()
     printf("<let>\n");
 
     expect_keyword("let");
-    expect_identifier("var");  // being used
+    expect_identifier("var", "used");
     if (try_symbol("["))
     {
         expect_expression();
@@ -857,10 +858,10 @@ void match_var_dec()
 
     expect_keyword("var");
     expect_type();
-    expect_identifier("var_name");  // being used
+    expect_identifier("var_name", "declared");
     while (try_symbol(","))
     {
-        expect_identifier("var_name");  // being used
+        expect_identifier("var_name", "declared");
     }
     expect_symbol(";");
 
@@ -888,7 +889,7 @@ void match_subroutine_dec()
 
     try_keyword("constructor") || try_keyword("function") || expect_keyword("method");
     try_keyword("void") || expect_type();
-    expect_identifier("subroutine_name");
+    expect_identifier("subroutine_name", "declared");
     expect_symbol("(");
     match_parameter_list();
     expect_symbol(")");
@@ -903,7 +904,7 @@ void match_class()
     printf("<class>\n");
 
     expect_keyword("class");
-    expect_identifier("class_name");
+    expect_identifier("class_name", "declared");
     expect_symbol("{");
 
     while (peek_keyword("static") ||
