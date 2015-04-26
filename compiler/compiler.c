@@ -693,28 +693,23 @@ void match_class_var_dec()
 }
 
 
-int match_parameter_list()
+void match_parameter_list()
 {
     Token *token, *type;
-    int param_num = 0;
 
     type = match_type();
     if (type)
     {
         token = expect_identifier();
         declare_var(function_scope, token->repr, type->repr, "argument");
-        param_num++;
 
         while (try_symbol(","))
         {
             type = expect_type();
             token = expect_identifier();
             declare_var(function_scope, token->repr, type->repr, "argument");
-            param_num++;
         }
     }
-
-    return param_num;
 }
 
 
@@ -853,61 +848,64 @@ void expect_expression()
 }
 
 
-void match_expression_list()
+int match_expression_list()
 {
+    int num = 0;
     if (match_expression())
     {
+        num++;
         while (try_symbol(","))
         {
             expect_expression();
+            num++;
         }
     }
+    return num;
 }
 
 
 void match_subroutine_call()
 {
-    printf("<subroutineCall>\n");
-
-    Token *token;
+    Token *class = 0, *function;
+    char function_name[MAXLINE];
 
     get_next_token();  // Should be an identifier
     if (peek_symbol("."))
     {
         step_back();
-        token = expect_identifier();  // class name
-        printf("<class_name>%s</class_name>\n", token->repr);
+        class = expect_identifier();
 
         expect_symbol(".");
-        token = expect_identifier();  // function name
-        printf("<function_name>%s</function_name>\n", token->repr);
+        function = expect_identifier();
+
+        sprintf(function_name, "%s.%s", class->repr, function->repr);
     }
     else
     {
         step_back();
-        token = expect_identifier();  // function name
-        printf("<function_name>%s</function_name>\n", token->repr);
+        function = expect_identifier();
+
+        sprintf(function_name, "%s", function->repr);
     }
 
     expect_symbol("(");
-    match_expression_list();
+    int param_num = match_expression_list();
     expect_symbol(")");
 
-    printf("</subroutineCall>\n");
+    // Write function call
+    fprintf(dest_file, "call %s %d\n", function_name, param_num);
 }
 
 
 void match_let()
 {
-    printf("<let>\n");
-
+    // TODO
     Token *token;
     Symbol_Table_Entry *var;
 
     expect_keyword("let");
     token = expect_identifier();
     var = find_var(token);
-    print_var(var);
 
     if (try_symbol("["))
     {
@@ -917,8 +915,6 @@ void match_let()
     expect_symbol("=");
     expect_expression();
     expect_symbol(";");
-
-    printf("</let>\n");
 }
 
 
@@ -1007,42 +1003,26 @@ void match_statements()
 }
 
 
-void match_var_dec()
+int match_var_dec()
 {
-    printf("<varDec>\n");
-
     Token *token, *type;
-    Symbol_Table_Entry *var;
+    int var_num = 0;
 
     expect_keyword("var");
     type = expect_type();
     token = expect_identifier();
-    var = declare_var(function_scope, token->repr, type->repr, "var");
-    print_var(var);
+    declare_var(function_scope, token->repr, type->repr, "var");
+    var_num++;
 
     while (try_symbol(","))
     {
         token = expect_identifier();
-        var = declare_var(function_scope, token->repr, type->repr, "var");
-        print_var(var);
+        declare_var(function_scope, token->repr, type->repr, "var");
+        var_num++;
     }
     expect_symbol(";");
 
-    printf("</varDec>\n");
-}
-
-
-void match_subroutine_body()
-{
-    printf("<subroutineBody>\n");
-
-    expect_symbol("{");
-    while (peek_keyword("var"))
-        match_var_dec();
-    match_statements();
-    expect_symbol("}");
-
-    printf("</subroutineBody>\n");
+    return var_num;
 }
 
 
@@ -1073,13 +1053,22 @@ void match_subroutine_dec()
 
     Token *token = expect_identifier();  // function name, declared
     expect_symbol("(");
-    int param_num = match_parameter_list();
+    match_parameter_list();
     expect_symbol(")");
 
-    // Write function header
-    fprintf(dest_file, "function %s.%s %d\n", global_class_name, token->repr, param_num);
+    // Subroutine body
+    int local_var_num = 0;
+    expect_symbol("{");
+    while (peek_keyword("var"))
+    {
+        local_var_num += match_var_dec();
+    }
 
-    match_subroutine_body();
+    // Write function header
+    fprintf(dest_file, "function %s.%s %d\n", global_class_name, token->repr, local_var_num);
+
+    match_statements();
+    expect_symbol("}");
 }
 
 
