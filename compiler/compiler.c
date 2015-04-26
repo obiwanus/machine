@@ -544,10 +544,12 @@ Token *expect(bool mandatory, token_type type, char *repr, char *expected, bool 
             return 0;
         }
     }
-    if (print)
-    {
-        print_token(token);
-    }
+    // Left for debugging
+    //
+    // if (print)
+    // {
+    //     print_token(token);
+    // }
 
     return token;
 }
@@ -671,7 +673,6 @@ Token *expect_type()
 
 void match_class_var_dec()
 {
-    printf("<classVarDec>\n");
     Token *token, *type, *kind;
     Symbol_Table_Entry *var;
 
@@ -682,44 +683,38 @@ void match_class_var_dec()
 
     token = expect_identifier();
     var = declare_var(class_scope, token->repr, type->repr, kind->repr);
-    print_var(var);
 
     while (try_symbol(","))
     {
         token = expect_identifier();
         var = declare_var(class_scope, token->repr, type->repr, kind->repr);
-        print_var(var);
     }
     expect_symbol(";");
-
-    printf("</classVarDec>\n");
 }
 
 
-void match_parameter_list()
+int match_parameter_list()
 {
-    printf("<parameterList>\n");
-
     Token *token, *type;
-    Symbol_Table_Entry *var;
+    int param_num = 0;
 
     type = match_type();
     if (type)
     {
         token = expect_identifier();
-        var = declare_var(function_scope, token->repr, type->repr, "argument");
-        print_var(var);
+        declare_var(function_scope, token->repr, type->repr, "argument");
+        param_num++;
 
         while (try_symbol(","))
         {
             type = expect_type();
             token = expect_identifier();
-            var = declare_var(function_scope, token->repr, type->repr, "argument");
-            print_var(var);
+            declare_var(function_scope, token->repr, type->repr, "argument");
+            param_num++;
         }
     }
 
-    printf("</parameterList>\n");
+    return param_num;
 }
 
 
@@ -1053,31 +1048,43 @@ void match_subroutine_body()
 
 void match_subroutine_dec()
 {
-    printf("<subroutineDec>\n");
-
     if (function_scope)
     {
+        // Free the scope of the previous function
         free(function_scope->entries);
         free(function_scope);
     }
     function_scope = new_scope();
 
-    try_keyword("constructor") || try_keyword("function") || expect_keyword("method");
-    try_keyword("void") || expect_type();
-    expect_identifier();  // function name, declared
-    expect_symbol("(");
-    match_parameter_list();
-    expect_symbol(")");
-    match_subroutine_body();
+    if (try_keyword("constructor"))
+    {
+        // Constructor
+    }
+    else if (try_keyword("function"))
+    {
+        // Function
+    }
+    else if (expect_keyword("method"))
+    {
+        // Method
+    }
 
-    printf("</subroutineDec>\n");
+    try_keyword("void") || expect_type();  // TODO: maybe check return type
+
+    Token *token = expect_identifier();  // function name, declared
+    expect_symbol("(");
+    int param_num = match_parameter_list();
+    expect_symbol(")");
+
+    // Write function header
+    fprintf(dest_file, "function %s.%s %d\n", global_class_name, token->repr, param_num);
+
+    match_subroutine_body();
 }
 
 
 void expect_class()
 {
-    printf("<class>\n");
-
     class_scope = new_scope();  // never freed
 
     Token *token;
@@ -1101,8 +1108,6 @@ void expect_class()
     }
 
     expect_symbol("}");
-
-    printf("</class>\n");
 }
 
 
