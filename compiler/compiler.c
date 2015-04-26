@@ -469,17 +469,56 @@ Symbol_Table_Entry *declare_var(Symbol_Table *scope, char *name, char *type, cha
 }
 
 
-Symbol_Table_Entry *find_var(char *name)
+Symbol_Table_Entry *find_var(Token *token)
 {
-    Symbol_Table_Entry *result = 0;
+    Symbol_Table_Entry *entry = 0;
 
-    return result;
+    // Search in function scope
+    if (function_scope)
+    {
+        for (int i = 0; i < function_scope->len; i++)
+        {
+            entry = function_scope->entries + i;
+            if (strcmp(token->repr, entry->name) == 0)
+                return entry;
+        }
+    }
+
+    // Search in class scope. Train my tolerance to duplicated code
+    for (int i = 0; i < class_scope->len; i++)
+    {
+        entry = class_scope->entries + i;
+        if (strcmp(token->repr, entry->name) == 0)
+            return entry;
+    }
+
+    printf("%s:%d: error: Undefined variable '%s'\n",
+           token->filename, token->line_num, token->repr);
+    exit(1);
 }
 
 
 void print_var(Symbol_Table_Entry *entry)
 {
-
+    char kind[10];
+    if (entry->kind == STATIC)
+    {
+        strcpy(kind, "static");
+    }
+    else if (entry->kind == FIELD)
+    {
+        strcpy(kind, "field");
+    }
+    else if (entry->kind == VAR)
+    {
+        strcpy(kind, "var");
+    }
+    else if (entry->kind == ARG)
+    {
+        strcpy(kind, "argument");
+    }
+    printf("<var type='%s' kind='%s' num='%d'>%s</var>\n",
+           entry->type, kind, entry->num, entry->name);
 }
 
 
@@ -751,7 +790,7 @@ bool match_term()
             // varName '[' expression ']'
             step_back();
             token = expect_identifier();
-            var = find_var(token->repr);
+            var = find_var(token);
             print_var(var);
             expect_symbol("[");
             match_expression();
@@ -767,7 +806,7 @@ bool match_term()
             // varName
             step_back();
             token = expect_identifier();
-            var = find_var(token->repr);
+            var = find_var(token);
             print_var(var);
         }
     }
@@ -834,27 +873,23 @@ void match_subroutine_call()
     printf("<subroutineCall>\n");
 
     Token *token;
-    Symbol_Table_Entry *var;
 
     get_next_token();  // Should be an identifier
     if (peek_symbol("."))
     {
         step_back();
         token = expect_identifier();  // class name
-        var = find_var(token->repr);
-        print_var(var);
+        printf("<class_name>%s</class_name>\n", token->repr);
 
         expect_symbol(".");
-        token = expect_identifier();
-        var = find_var(token->repr);
-        print_var(var);
+        token = expect_identifier();  // function name
+        printf("<function_name>%s</function_name>\n", token->repr);
     }
     else
     {
         step_back();
-        token = expect_identifier();
-        var = find_var(token->repr);
-        print_var(var);
+        token = expect_identifier();  // function name
+        printf("<function_name>%s</function_name>\n", token->repr);
     }
 
     expect_symbol("(");
@@ -874,7 +909,7 @@ void match_let()
 
     expect_keyword("let");
     token = expect_identifier();
-    var = find_var(token->repr);
+    var = find_var(token);
     print_var(var);
 
     if (try_symbol("["))
