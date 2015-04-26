@@ -18,6 +18,8 @@ void get_dir_path(char *source_path, char *dir_path);
 static Tokens *tokens;
 static Symbol_Table *class_scope;
 static Symbol_Table *function_scope;
+static char global_class_name[MAXLINE];
+static FILE *dest_file;
 
 
 int main(int argc, char *argv[])
@@ -1078,9 +1080,12 @@ void expect_class()
 
     class_scope = new_scope();  // never freed
 
+    Token *token;
+
     expect_keyword("class");
-    expect_identifier();  // class name, declared
-    // TODO: define class
+    token = expect_identifier();  // class name, declared
+    strcpy(global_class_name, token->repr);
+
     expect_symbol("{");
 
     while (peek_keyword("static") ||
@@ -1106,38 +1111,45 @@ void compile_file(char *file_path)
     // Allocate memory for tokens
     tokens = calloc(1, sizeof(Tokens));
 
-    // Tokenize
+    int line_num = 0;
+    char line[MAXLINE];
+    char filename[MAXLINE];
+    char dest_file_path[MAXLINE];
+
+    get_name_from_path(file_path, filename);
+    get_dir_path(file_path, dest_file_path);
+    snprintf(dest_file_path, sizeof(dest_file_path), "%s/%s.vm", dest_file_path, filename);
+
+    // Open source file
+    FILE *file = fopen(file_path, "rb");
+    if (file == NULL)
+        return;
+
+    // Open dest file
+    dest_file = fopen(dest_file_path, "wb");
+    if (dest_file == NULL)
     {
-        int line_num = 0;
-        char line[MAXLINE];
-        char filename[MAXLINE];
+        printf("Cannot open dest file %s\n", dest_file_path);
+        exit(1);
+    }
 
-        get_name_from_path(file_path, filename);
+    Parse_result result;
+    bool multi_line_comment_mode = false;
 
-        FILE *file = fopen(file_path, "rb");
-        if (file == NULL)
-            return;
+    while (fgets(line, MAXLINE, file))
+    {
+        line_num++;
 
-        Parse_result result;
-        bool multi_line_comment_mode = false;
-
-        while (fgets(line, MAXLINE, file))
+        result = parse_line(line, file_path, line_num, &multi_line_comment_mode);
+        if (result.code == PARSE_BLANK)
+            continue;
+        if (result.code == PARSE_ERROR)
         {
-            line_num++;
-
-            result = parse_line(line, file_path, line_num, &multi_line_comment_mode);
-            if (result.code == PARSE_BLANK)
-                continue;
-            if (result.code == PARSE_ERROR)
-            {
-                printf("Syntax error at line %d in file %s: \n%s\n",
-                        line_num, file_path, line);
-                printf("%s\n", result.message);
-                exit(1);
-            }
+            printf("Syntax error at line %d in file %s: \n%s\n",
+                    line_num, file_path, line);
+            printf("%s\n", result.message);
+            exit(1);
         }
-
-        fclose(file);
     }
 
     // Parse syntax
@@ -1145,6 +1157,10 @@ void compile_file(char *file_path)
     expect_class();
 
     free(tokens);
+    fclose(file);
+    fclose(dest_file);
+
+    printf("File %s written\n", dest_file_path);
 }
 
 
