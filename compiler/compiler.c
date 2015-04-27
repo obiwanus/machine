@@ -868,7 +868,8 @@ bool match_expression()
     {
         while ((op = match_op()))
         {
-            fprintf(dest_file, "// %s\n", op->repr);
+            expect_term();
+
             if (strcmp(op->repr, "+") == 0)
             {
                 fprintf(dest_file, "add\n");
@@ -879,11 +880,11 @@ bool match_expression()
             }
             else if (strcmp(op->repr, "/") == 0)
             {
-                // TODO
+                fprintf(dest_file, "call Math.divide 2\n");
             }
             else if (strcmp(op->repr, "*") == 0)
             {
-                // TODO
+                fprintf(dest_file, "call Math.multiply 2\n");
             }
             else if (strcmp(op->repr, "&") == 0)
             {
@@ -905,8 +906,6 @@ bool match_expression()
             {
                 fprintf(dest_file, "eq\n");
             }
-
-            expect_term();
         }
         match = true;
     }
@@ -993,30 +992,34 @@ void match_subroutine_call()
 
 void match_let()
 {
-    // TODO
     Token *token;
     Symbol_Table_Entry *var;
 
+    fprintf(dest_file, "// let\n");
     expect_keyword("let");
     token = expect_identifier();
     var = find_var(token);
-
+    push_var(var);
     if (try_symbol("["))
     {
         // TODO: array handling
         expect_expression();
         expect_symbol("]");
+        fprintf(dest_file, "add\n");
     }
+    fprintf(dest_file, "pop pointer 1\n");
+
     expect_symbol("=");
     expect_expression();
     expect_symbol(";");
+
+    fprintf(dest_file, "pop that 0\n");
 }
 
 
 void match_if()
 {
-    printf("<if>\n");
-
+    // TODO
     expect_keyword("if");
     expect_symbol("(");
     expect_expression();
@@ -1030,15 +1033,12 @@ void match_if()
         match_statements();
         expect_symbol("}");
     }
-
-    printf("</if>\n");
 }
 
 
 void match_while()
 {
-    printf("<while>\n");
-
+    // TODO
     expect_keyword("while");
     expect_symbol("(");
     expect_expression();
@@ -1046,37 +1046,29 @@ void match_while()
     expect_symbol("{");
     match_statements();
     expect_symbol("}");
-    printf("</while>\n");
 }
 
 
 void match_do()
 {
-    printf("<do>\n");
-
     expect_keyword("do");
     match_subroutine_call();
     expect_symbol(";");
-    printf("</do>\n");
 }
 
 
 void match_return()
 {
-    printf("<return>\n");
+    // TODO
 
     expect_keyword("return");
     match_expression();
     expect_symbol(";");
-
-    printf("</return>\n");
 }
 
 
 void match_statements()
 {
-    printf("<statements>\n");
-
     bool none_matched = false;
     while (!none_matched)
     {
@@ -1093,8 +1085,6 @@ void match_statements()
         else
             none_matched = true;
     }
-
-    printf("</statements>\n");
 }
 
 
