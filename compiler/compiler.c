@@ -699,23 +699,22 @@ void match_parameter_list()
 }
 
 
-bool match_op()
+Token *match_op()
 {
-    printf("<op>\n");
-    bool match = (
-        try_symbol("+") ||
-        try_symbol("-") ||
-        try_symbol("*") ||
-        try_symbol("/") ||
-        try_symbol("&") ||
-        try_symbol("|") ||
-        try_symbol("<") ||
-        try_symbol(">") ||
-        try_symbol("=")
+    Token *token = 0;
+    (
+        (token = try_symbol("+")) ||
+        (token = try_symbol("-")) ||
+        (token = try_symbol("*")) ||
+        (token = try_symbol("/")) ||
+        (token = try_symbol("&")) ||
+        (token = try_symbol("|")) ||
+        (token = try_symbol("<")) ||
+        (token = try_symbol(">")) ||
+        (token = try_symbol("="))
     );
-    printf("</op>\n");
 
-    return match;
+    return token;
 }
 
 
@@ -728,10 +727,18 @@ bool match_unary_op()
 }
 
 
-bool match_keyword_constant()
+Token *match_keyword_constant()
 {
-    return (try_keyword("true") || try_keyword("false") ||\
-            try_keyword("null") || try_keyword("this"));
+    Token *token = 0;
+
+    (
+        (token = try_keyword("true")) ||
+        (token = try_keyword("false")) ||
+        (token = try_keyword("null")) ||
+        (token = try_keyword("this"))
+    );
+
+    return token;
 }
 
 
@@ -742,12 +749,35 @@ void match_subroutine_call();
 
 bool match_term()
 {
-    printf("<term>\n");
     bool match = false;
+    Token *token;
 
-    if (try_integer() || try_string() || match_keyword_constant())
+    if ((token = try_integer()) != 0)
     {
         match = true;
+        fprintf(dest_file, "push constant %s\n", token->repr);
+    }
+    else if ((token = try_string()) != 0)
+    {
+        match = true;
+        fprintf(dest_file, "// TODO: push string '%s'\n", token->repr);
+    }
+    else if ((token = match_keyword_constant()) != 0)
+    {
+        match = true;
+        if (strcmp(token->repr, "true") == 0)
+        {
+            fprintf(dest_file, "push constant 1\nneg\n");
+        }
+        else if (strcmp(token->repr, "false") == 0 || strcmp(token->repr, "null") == 0)
+        {
+            fprintf(dest_file, "push constant 0\n");
+        }
+        else if (strcmp(token->repr, "this") == 0)
+        {
+            fprintf(dest_file, "push pointer 0\n");  // TODO: ?
+        }
+
     }
     else if (try_symbol("("))
     {
@@ -794,7 +824,6 @@ bool match_term()
         match = true;
     }
 
-    printf("</term>\n");
     return match;
 }
 
@@ -809,18 +838,20 @@ void expect_term()
 
 bool match_expression()
 {
-    printf("<expression>\n");
     bool match = false;
+    Token *op = 0;
+
     if (match_term())
     {
-        while (match_op())
+        while ((op = match_op()))
         {
             expect_term();
         }
         match = true;
     }
 
-    printf("</expression>\n");
+    // TODO: op
+
     return match;
 }
 
