@@ -1026,20 +1026,29 @@ void match_let()
 
 void match_if()
 {
-    // TODO
-    expect_keyword("if");
+    Token *token;
+
+    token = expect_keyword("if");
+
     expect_symbol("(");
     expect_expression();
     expect_symbol(")");
+
+    fprintf(dest_file, "not\n");
+    fprintf(dest_file, "if-goto IF_ELSE%d\n", token->line_num);
+
     expect_symbol("{");
     match_statements();
+    fprintf(dest_file, "goto IF_END%d\n", token->line_num);
     expect_symbol("}");
     if (try_keyword("else"))
     {
+        fprintf(dest_file, "label IF_ELSE%d\n", token->line_num);
         expect_symbol("{");
         match_statements();
         expect_symbol("}");
     }
+    fprintf(dest_file, "label IF_END%d\n", token->line_num);
 }
 
 
