@@ -949,8 +949,8 @@ int match_expression_list()
 
 void match_subroutine_call()
 {
-    Token *class_or_obj = 0, *function;
-    Symbol_Table_Entry *var;
+    Token *class_or_obj = 0, *function = 0;
+    Symbol_Table_Entry *var = 0;
     char function_name[MAXLINE];
     int param_num = 0;
 
@@ -994,6 +994,8 @@ void match_subroutine_call()
     expect_symbol(")");
 
     // Write function call
+    fprintf(dest_file, "// function call\n");
+    // fprintf(dest_file, "call %s %d\n", function_name, param_num);
     fprintf(dest_file, "call %s %d\n", function_name, param_num);
 }
 
@@ -1041,9 +1043,9 @@ void match_if()
     match_statements();
     fprintf(dest_file, "goto IF_END%d\n", token->line_num);
     expect_symbol("}");
+    fprintf(dest_file, "label IF_ELSE%d\n", token->line_num);
     if (try_keyword("else"))
     {
-        fprintf(dest_file, "label IF_ELSE%d\n", token->line_num);
         expect_symbol("{");
         match_statements();
         expect_symbol("}");
@@ -1294,5 +1296,4 @@ void compile_file(char *file_path)
 
     printf("File %s written\n", dest_file_path);
 }
-
 
