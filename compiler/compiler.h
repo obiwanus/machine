@@ -45,10 +45,10 @@ typedef struct
 
 typedef struct
 {
-    enum {STATIC, FIELD, ARG, VAR} kind;
+    char kind[20];
     char name[MAXLINE];
     char type[MAXLINE];
-    int num;
+    int index;
 } Symbol_Table_Entry;
 
 

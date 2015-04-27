@@ -446,34 +446,22 @@ Symbol_Table_Entry *declare_var(Symbol_Table *scope, char *name, char *type, cha
 
     strcpy(entry->name, name);
     strcpy(entry->type, type);
-    if (strcmp(kind, "static") == 0)
-        entry->kind = STATIC;
-    else if (strcmp(kind, "field") == 0)
-        entry->kind = FIELD;
-    else if (strcmp(kind, "argument") == 0)
-        entry->kind = ARG;
-    else if (strcmp(kind, "var") == 0)
-        entry->kind = VAR;
-    else
-    {
-        printf("Unknown variable kind: %s\n", kind);
-        exit(1);
-    }
-    int num = 0;
+    strcpy(entry->kind, kind);
+    int index = 0;
     for (int i = 0; i < scope->len - 1; i++)  // don't look at itself
     {
-        if (scope->entries[i].kind == entry->kind)
-            num++;
+        if (strcmp(scope->entries[i].kind, entry->kind) == 0)
+            index++;
     }
-    entry->num = num;
+    entry->index = index;
 
     return entry;
 }
 
 
-Symbol_Table_Entry *find_var(Token *token)
+Symbol_Table_Entry *try_var(Token *token)
 {
-    Symbol_Table_Entry *entry = 0;
+    Symbol_Table_Entry *entry;
 
     // Search in function scope
     if (function_scope)
@@ -494,33 +482,31 @@ Symbol_Table_Entry *find_var(Token *token)
             return entry;
     }
 
-    printf("%s:%d: error: Undefined variable '%s'\n",
-           token->filename, token->line_num, token->repr);
-    exit(1);
+    return 0;
+}
+
+
+Symbol_Table_Entry *find_var(Token *token)
+{
+    Symbol_Table_Entry *entry = try_var(token);
+
+    if (entry)
+    {
+        return entry;
+    }
+    else
+    {
+        printf("%s:%d: error: Undefined variable '%s'\n",
+               token->filename, token->line_num, token->repr);
+        exit(1);
+    }
 }
 
 
 void print_var(Symbol_Table_Entry *entry)
 {
-    char kind[10];
-    if (entry->kind == STATIC)
-    {
-        strcpy(kind, "static");
-    }
-    else if (entry->kind == FIELD)
-    {
-        strcpy(kind, "field");
-    }
-    else if (entry->kind == VAR)
-    {
-        strcpy(kind, "var");
-    }
-    else if (entry->kind == ARG)
-    {
-        strcpy(kind, "argument");
-    }
-    printf("<var type='%s' kind='%s' num='%d'>%s</var>\n",
-           entry->type, kind, entry->num, entry->name);
+    printf("<var type='%s' kind='%s' index='%d'>%s</var>\n",
+           entry->type, entry->kind, entry->index, entry->name);
 }
 
 
@@ -866,26 +852,46 @@ int match_expression_list()
 
 void match_subroutine_call()
 {
-    Token *class = 0, *function;
+    Token *class_or_obj = 0, *function;
+    Symbol_Table_Entry *var;
     char function_name[MAXLINE];
 
     get_next_token();  // Should be an identifier
     if (peek_symbol("."))
     {
         step_back();
-        class = expect_identifier();
+        class_or_obj = expect_identifier();
+        var = try_var(class_or_obj);
 
         expect_symbol(".");
         function = expect_identifier();
-
-        sprintf(function_name, "%s.%s", class->repr, function->repr);
     }
     else
     {
         step_back();
         function = expect_identifier();
+    }
 
-        sprintf(function_name, "%s", function->repr);
+    if (var)
+    {
+        // Method
+        sprintf(function_name, "%s.%s", var->type, function->repr);
+
+        // Push object
+        if (strcmp(var->kind, "field") == 0)
+            fprintf(dest_file, "push this %d\n", var->index);
+        else
+            fprintf(dest_file, "push %s %d\n", var->kind, var->index);
+    }
+    else if (class_or_obj)
+    {
+        // Function of another class
+        sprintf(function_name, "%s.%s", class_or_obj->repr, function->repr);
+    }
+    else
+    {
+        // Function of this class
+        sprintf(function_name, "%s.%s", global_class_name, function->repr);
     }
 
     expect_symbol("(");
@@ -909,6 +915,7 @@ void match_let()
 
     if (try_symbol("["))
     {
+        // TODO: array handling
         expect_expression();
         expect_symbol("]");
     }
@@ -1011,13 +1018,13 @@ int match_var_dec()
     expect_keyword("var");
     type = expect_type();
     token = expect_identifier();
-    declare_var(function_scope, token->repr, type->repr, "var");
+    declare_var(function_scope, token->repr, type->repr, "local");
     var_num++;
 
     while (try_symbol(","))
     {
         token = expect_identifier();
-        declare_var(function_scope, token->repr, type->repr, "var");
+        declare_var(function_scope, token->repr, type->repr, "local");
         var_num++;
     }
     expect_symbol(";");
