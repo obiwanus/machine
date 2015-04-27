@@ -768,7 +768,15 @@ bool match_term()
     else if ((token = try_string()) != 0)
     {
         match = true;
-        fprintf(dest_file, "// TODO: push string '%s'\n", token->repr);
+        fprintf(dest_file, "push constant %lu\n", strlen(token->repr));
+        fprintf(dest_file, "call String.new 1\n");
+        char *cursor = token->repr;
+        while (*cursor != 0)
+        {
+            fprintf(dest_file, "push constant %d\n", (int)*cursor);
+            fprintf(dest_file, "call String.appendChar 2\n");
+            cursor++;
+        }
     }
     else if ((token = match_keyword_constant()) != 0)
     {
@@ -783,7 +791,7 @@ bool match_term()
         }
         else if (strcmp(token->repr, "this") == 0)
         {
-            fprintf(dest_file, "push pointer 0\n");  // TODO: ?
+            fprintf(dest_file, "push pointer 0\n");
         }
 
     }
@@ -1138,7 +1146,7 @@ void match_subroutine_dec()
         function_type = METHOD;
     }
 
-    try_keyword("void") || expect_type();  // TODO: maybe check return type
+    try_keyword("void") || expect_type();  // maybe check return type
 
     Token *token = expect_identifier();  // function name, declared
     expect_symbol("(");
