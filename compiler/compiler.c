@@ -1054,14 +1054,23 @@ void match_if()
 
 void match_while()
 {
-    // TODO
-    expect_keyword("while");
+    Token *token;
+
+    token = expect_keyword("while");
+    fprintf(dest_file, "label WHILE_START%d\n", token->line_num);
     expect_symbol("(");
     expect_expression();
     expect_symbol(")");
+
+    fprintf(dest_file, "not\n");
+    fprintf(dest_file, "if-goto WHILE_END%d\n", token->line_num);
+
     expect_symbol("{");
     match_statements();
     expect_symbol("}");
+
+    fprintf(dest_file, "goto WHILE_START%d\n", token->line_num);
+    fprintf(dest_file, "label WHILE_END%d\n", token->line_num);
 }
 
 
