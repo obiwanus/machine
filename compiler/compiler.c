@@ -1002,7 +1002,6 @@ void match_let()
     push_var(var);
     if (try_symbol("["))
     {
-        // TODO: array handling
         expect_expression();
         expect_symbol("]");
         fprintf(dest_file, "add\n");
@@ -1054,16 +1053,19 @@ void match_do()
     expect_keyword("do");
     match_subroutine_call();
     expect_symbol(";");
+    fprintf(dest_file, "pop temp 0\n");  // ignore result
 }
 
 
 void match_return()
 {
-    // TODO
-
     expect_keyword("return");
-    match_expression();
+    if (!match_expression())
+    {
+        fprintf(dest_file, "push constant 0\n");  // void
+    }
     expect_symbol(";");
+    fprintf(dest_file, "return\n");
 }
 
 
@@ -1113,6 +1115,8 @@ int match_var_dec()
 
 void match_subroutine_dec()
 {
+    enum {CONSTRUCTOR, FUNCTION, METHOD} function_type;
+
     if (function_scope)
     {
         // Free the scope of the previous function
@@ -1123,15 +1127,15 @@ void match_subroutine_dec()
 
     if (try_keyword("constructor"))
     {
-        // Constructor
+        function_type = CONSTRUCTOR;
     }
     else if (try_keyword("function"))
     {
-        // Function
+        function_type = FUNCTION;
     }
     else if (expect_keyword("method"))
     {
-        // Method
+        function_type = METHOD;
     }
 
     try_keyword("void") || expect_type();  // TODO: maybe check return type
@@ -1151,6 +1155,29 @@ void match_subroutine_dec()
 
     // Write function header
     fprintf(dest_file, "function %s.%s %d\n", global_class_name, token->repr, local_var_num);
+    if (function_type == METHOD)
+    {
+        // Point this to the object
+        fprintf(dest_file, "push argument 0 \npop pointer 0\n");
+    }
+    else if (function_type == CONSTRUCTOR)
+    {
+        // Get the number of fields in the current class
+        int field_num = 0;
+        for (int i = 0; i < class_scope->len; i++)
+        {
+            if (strcmp(class_scope->entries[i].kind, "field") == 0)
+                field_num++;
+        }
+
+        // Allocate space
+        if (field_num)
+        {
+            fprintf(dest_file, "push constant %d\n", field_num);
+            fprintf(dest_file, "call Memory.alloc 1\n");
+            fprintf(dest_file, "pop pointer 0\n");
+        }
+    }
 
     match_statements();
     expect_symbol("}");
