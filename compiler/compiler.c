@@ -855,6 +855,7 @@ void match_subroutine_call()
     Token *class_or_obj = 0, *function;
     Symbol_Table_Entry *var;
     char function_name[MAXLINE];
+    int param_num = 0;
 
     get_next_token();  // Should be an identifier
     if (peek_symbol("."))
@@ -882,6 +883,7 @@ void match_subroutine_call()
             fprintf(dest_file, "push this %d\n", var->index);
         else
             fprintf(dest_file, "push %s %d\n", var->kind, var->index);
+        param_num++;
     }
     else if (class_or_obj)
     {
@@ -895,7 +897,7 @@ void match_subroutine_call()
     }
 
     expect_symbol("(");
-    int param_num = match_expression_list();
+    param_num += match_expression_list();
     expect_symbol(")");
 
     // Write function call
