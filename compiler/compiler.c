@@ -510,6 +510,15 @@ void print_var(Symbol_Table_Entry *entry)
 }
 
 
+void push_var(Symbol_Table_Entry *var)
+{
+    if (strcmp(var->kind, "field") == 0)
+        fprintf(dest_file, "push this %d\n", var->index);
+    else
+        fprintf(dest_file, "push %s %d\n", var->kind, var->index);
+}
+
+
 Token *expect(bool mandatory, token_type type, char *repr, char *expected, bool print)
 {
     Token *token = get_next_token();
@@ -718,12 +727,11 @@ Token *match_op()
 }
 
 
-bool match_unary_op()
+Token *match_unary_op()
 {
-    printf("<unaryOp>\n");
-    bool match = try_symbol("-") || try_symbol("~");
-    printf("</unaryOp>\n");
-    return match;
+    Token *token = 0;
+    (token = try_symbol("-")) || (token = try_symbol("~"));
+    return token;
 }
 
 
@@ -799,10 +807,12 @@ bool match_term()
             step_back();
             token = expect_identifier();
             var = find_var(token);
-            print_var(var);
+            push_var(var);
             expect_symbol("[");
             match_expression();
             expect_symbol("]");
+            // Continue processing array access
+            fprintf(dest_file, "add\npop pointer 1\npush that 0\n");
         }
         else if (peek_symbol("(") || peek_symbol("."))
         {
@@ -815,13 +825,26 @@ bool match_term()
             step_back();
             token = expect_identifier();
             var = find_var(token);
-            print_var(var);
+            push_var(var);
         }
     }
-    else if (match_unary_op())
+    else if ((token = match_unary_op()) != 0)
     {
-        expect_term();
         match = true;
+        expect_term();
+        if (strcmp(token->repr, "-") == 0)
+        {
+            fprintf(dest_file, "neg\n");
+        }
+        else if (strcmp(token->repr, "~") == 0)
+        {
+            fprintf(dest_file, "not\n");
+        }
+        else
+        {
+            printf("Unexpected unary op: %s\n", token->repr);
+            exit(1);
+        }
     }
 
     return match;
@@ -845,12 +868,48 @@ bool match_expression()
     {
         while ((op = match_op()))
         {
+            fprintf(dest_file, "// %s\n", op->repr);
+            if (strcmp(op->repr, "+") == 0)
+            {
+                fprintf(dest_file, "add\n");
+            }
+            else if (strcmp(op->repr, "-") == 0)
+            {
+                fprintf(dest_file, "sub\n");
+            }
+            else if (strcmp(op->repr, "/") == 0)
+            {
+                // TODO
+            }
+            else if (strcmp(op->repr, "*") == 0)
+            {
+                // TODO
+            }
+            else if (strcmp(op->repr, "&") == 0)
+            {
+                fprintf(dest_file, "and\n");
+            }
+            else if (strcmp(op->repr, "|") == 0)
+            {
+                fprintf(dest_file, "or\n");
+            }
+            else if (strcmp(op->repr, "<") == 0)
+            {
+                fprintf(dest_file, "lt\n");
+            }
+            else if (strcmp(op->repr, ">") == 0)
+            {
+                fprintf(dest_file, "gt\n");
+            }
+            else if (strcmp(op->repr, "=") == 0)
+            {
+                fprintf(dest_file, "eq\n");
+            }
+
             expect_term();
         }
         match = true;
     }
-
-    // TODO: op
 
     return match;
 }
@@ -909,11 +968,7 @@ void match_subroutine_call()
         // Method
         sprintf(function_name, "%s.%s", var->type, function->repr);
 
-        // Push object
-        if (strcmp(var->kind, "field") == 0)
-            fprintf(dest_file, "push this %d\n", var->index);
-        else
-            fprintf(dest_file, "push %s %d\n", var->kind, var->index);
+        push_var(var);
         param_num++;
     }
     else if (class_or_obj)
