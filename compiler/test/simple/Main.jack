@@ -1,0 +1,15 @@
+class Main
+{
+    function void main()
+    {
+        var int i;
+
+        let i = 0;
+        while (i < 5)
+        {
+            do Output.printString("vasia");
+            let i = i + 1;
+        }
+        return;
+    }
+}
