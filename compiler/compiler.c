@@ -519,6 +519,15 @@ void push_var(Symbol_Table_Entry *var)
 }
 
 
+void pop_var(Symbol_Table_Entry *var)
+{
+    if (strcmp(var->kind, "field") == 0)
+        fprintf(dest_file, "pop this %d\n", var->index);
+    else
+        fprintf(dest_file, "pop %s %d\n", var->kind, var->index);
+}
+
+
 Token *expect(bool mandatory, token_type type, char *repr, char *expected, bool print)
 {
     Token *token = get_next_token();
@@ -994,8 +1003,6 @@ void match_subroutine_call()
     expect_symbol(")");
 
     // Write function call
-    fprintf(dest_file, "// function call\n");
-    // fprintf(dest_file, "call %s %d\n", function_name, param_num);
     fprintf(dest_file, "call %s %d\n", function_name, param_num);
 }
 
@@ -1004,25 +1011,34 @@ void match_let()
 {
     Token *token;
     Symbol_Table_Entry *var;
+    bool array = false;
 
-    fprintf(dest_file, "// let\n");
     expect_keyword("let");
     token = expect_identifier();
     var = find_var(token);
-    push_var(var);
     if (try_symbol("["))
     {
+        array = true;
+        push_var(var);
         expect_expression();
         expect_symbol("]");
         fprintf(dest_file, "add\n");
+        fprintf(dest_file, "pop pointer 1\n");
     }
-    fprintf(dest_file, "pop pointer 1\n");
 
     expect_symbol("=");
     expect_expression();
     expect_symbol(";");
 
-    fprintf(dest_file, "pop that 0\n");
+    if (array)
+    {
+        fprintf(dest_file, "pop that 0\n");
+    }
+    else
+    {
+        pop_var(var);
+    }
+
 }
 
 
