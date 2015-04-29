@@ -440,7 +440,8 @@ Symbol_Table *new_scope()
 }
 
 
-Symbol_Table_Entry *declare_var(Symbol_Table *scope, char *name, char *type, char *kind)
+Symbol_Table_Entry *
+declare_var(Symbol_Table *scope, char *name, char *type, char *kind, bool is_method)
 {
     Symbol_Table_Entry *entry = new_entry(scope);
 
@@ -454,6 +455,8 @@ Symbol_Table_Entry *declare_var(Symbol_Table *scope, char *name, char *type, cha
             index++;
     }
     entry->index = index;
+    if (is_method)
+        entry->index++;
 
     return entry;
 }
@@ -686,18 +689,18 @@ void match_class_var_dec()
     type = expect_type();
 
     token = expect_identifier();
-    var = declare_var(class_scope, token->repr, type->repr, kind->repr);
+    var = declare_var(class_scope, token->repr, type->repr, kind->repr, false);
 
     while (try_symbol(","))
     {
         token = expect_identifier();
-        var = declare_var(class_scope, token->repr, type->repr, kind->repr);
+        var = declare_var(class_scope, token->repr, type->repr, kind->repr, false);
     }
     expect_symbol(";");
 }
 
 
-void match_parameter_list()
+void match_parameter_list(bool is_method)
 {
     Token *token, *type;
 
@@ -705,13 +708,13 @@ void match_parameter_list()
     if (type)
     {
         token = expect_identifier();
-        declare_var(function_scope, token->repr, type->repr, "argument");
+        declare_var(function_scope, token->repr, type->repr, "argument", is_method);
 
         while (try_symbol(","))
         {
             type = expect_type();
             token = expect_identifier();
-            declare_var(function_scope, token->repr, type->repr, "argument");
+            declare_var(function_scope, token->repr, type->repr, "argument", is_method);
         }
     }
 }
@@ -792,7 +795,7 @@ bool match_term()
         match = true;
         if (strcmp(token->repr, "true") == 0)
         {
-            fprintf(dest_file, "push constant 1\nneg\n");
+            fprintf(dest_file, "push constant 0\nnot\n");
         }
         else if (strcmp(token->repr, "false") == 0 || strcmp(token->repr, "null") == 0)
         {
@@ -994,7 +997,9 @@ void match_subroutine_call()
     }
     else
     {
-        // Function of this class
+        // Method of this class
+        fprintf(dest_file, "push pointer 0\n");
+        param_num++;
         sprintf(function_name, "%s.%s", global_class_name, function->repr);
     }
 
@@ -1144,13 +1149,13 @@ int match_var_dec()
     expect_keyword("var");
     type = expect_type();
     token = expect_identifier();
-    declare_var(function_scope, token->repr, type->repr, "local");
+    declare_var(function_scope, token->repr, type->repr, "local", false);
     var_num++;
 
     while (try_symbol(","))
     {
         token = expect_identifier();
-        declare_var(function_scope, token->repr, type->repr, "local");
+        declare_var(function_scope, token->repr, type->repr, "local", false);
         var_num++;
     }
     expect_symbol(";");
@@ -1188,7 +1193,7 @@ void match_subroutine_dec()
 
     Token *token = expect_identifier();  // function name, declared
     expect_symbol("(");
-    match_parameter_list();
+    match_parameter_list(function_type == METHOD);
     expect_symbol(")");
 
     // Subroutine body
