@@ -1059,10 +1059,11 @@ void match_if()
     expect_expression();
     expect_symbol(")");
 
-    fprintf(dest_file, "not\n");
-    fprintf(dest_file, "if-goto IF_ELSE%d\n", token->line_num);
+    fprintf(dest_file, "if-goto IF_TRUE%d\n", token->line_num);
+    fprintf(dest_file, "goto IF_ELSE%d\n", token->line_num);
 
     expect_symbol("{");
+    fprintf(dest_file, "label IF_TRUE%d\n", token->line_num);
     match_statements();
     fprintf(dest_file, "goto IF_END%d\n", token->line_num);
     expect_symbol("}");
