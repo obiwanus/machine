@@ -824,10 +824,10 @@ bool match_term()
             step_back();
             token = expect_identifier();
             var = find_var(token);
-            push_var(var);
             expect_symbol("[");
             match_expression();
             expect_symbol("]");
+            push_var(var);
             // Continue processing array access
             fprintf(dest_file, "add\npop pointer 1\npush that 0\n");
         }
@@ -1019,11 +1019,11 @@ void match_let()
     if (try_symbol("["))
     {
         array = true;
-        push_var(var);
         expect_expression();
         expect_symbol("]");
+        push_var(var);
         fprintf(dest_file, "add\n");
-        fprintf(dest_file, "pop pointer 1\n");
+        fprintf(dest_file, "pop temp 0\n");
     }
 
     expect_symbol("=");
@@ -1032,6 +1032,8 @@ void match_let()
 
     if (array)
     {
+        fprintf(dest_file, "push temp 0\n");
+        fprintf(dest_file, "pop pointer 1\n");
         fprintf(dest_file, "pop that 0\n");
     }
     else
