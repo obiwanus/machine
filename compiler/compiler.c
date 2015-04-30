@@ -1028,7 +1028,6 @@ void match_let()
         expect_symbol("]");
         push_var(var);
         fprintf(dest_file, "add\n");
-        fprintf(dest_file, "pop temp 0\n");
     }
 
     expect_symbol("=");
@@ -1037,8 +1036,9 @@ void match_let()
 
     if (array)
     {
-        fprintf(dest_file, "push temp 0\n");
+        fprintf(dest_file, "pop temp 0\n");
         fprintf(dest_file, "pop pointer 1\n");
+        fprintf(dest_file, "push temp 0\n");
         fprintf(dest_file, "pop that 0\n");
     }
     else
