@@ -1,11 +1,3 @@
-// This file is part of www.nand2tetris.org
-// and the book "The Elements of Computing Systems"
-// by Nisan and Schocken, MIT Press.
-// File name: projects/12/Math.jack
-
-/**
- * A basic math library.
- */
 class Math {
 
     /** Initializes the library. */
@@ -13,7 +5,16 @@ class Math {
     }
 
     /** Returns the absolute value of x. */
-    function int abs(int x) {
+    function int abs(int x)
+    {
+        if (x < 0)
+        {
+            return -x;
+        }
+        else
+        {
+            return x;
+        }
     }
 
     /** Returns the product of x and y. */
@@ -28,11 +29,27 @@ class Math {
     function int sqrt(int x) {
     }
 
-    /** Returns the greater number. */
-    function int max(int a, int b) {
+    function int max(int a, int b)
+    {
+        if (a > b)
+        {
+            return a;
+        }
+        else
+        {
+            return b;
+        }
     }
 
-    /** Returns the smaller number. */
-    function int min(int a, int b) {
+    function int min(int a, int b)
+    {
+        if (a < b)
+        {
+            return a;
+        }
+        else
+        {
+            return b;
+        }
     }
 }
