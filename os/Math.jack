@@ -18,7 +18,24 @@ class Math {
     }
 
     /** Returns the product of x and y. */
-    function int multiply(int x, int y) {
+    function int multiply(int x, int y)
+    {
+        var int mask, i, shifted_x, result;
+
+        let mask = 1;
+        let shifted_x = x;
+        let i = 0;
+        let result = 0;
+
+        while (i < 16)
+        {
+            if ((y & mask) > 0)
+            {
+                let result = result + shifted_x;
+            }
+            let mask = mask + mask;
+            let shifted_x = shifted_x + shifted_x;
+        }
     }
 
     /** Returns the integer part of x/y. */
@@ -53,3 +70,4 @@ class Math {
         }
     }
 }
+
